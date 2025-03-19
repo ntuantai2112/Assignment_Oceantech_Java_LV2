@@ -14,7 +14,7 @@ import javax.persistence.Table;
 @Setter
 public class Province {
     @Id
-    @Column(name = "prv_id")
+    @Column(name = "province_id")
     private Long id;
 
     @Column(name = "name")

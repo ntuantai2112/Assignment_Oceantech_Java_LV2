@@ -6,7 +6,7 @@ spring:
     driverClassName: org.postgresql.Driver
     url: "jdbc:postgresql://127.0.0.1:5432/demo_tms"
     username: "postgres"
-    password: "Oceantech@123"
+    password: "123456"
 
   jpa:
     database: POSTGRESQL
