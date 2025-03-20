@@ -5,15 +5,20 @@ import lombok.Setter;
 
 import javax.persistence.*;
 
+
 @Entity
-@Table(name = "lc_province")
+@Table(name = "lc_district")
 @Getter
 @Setter
-public class Province {
+public class District {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "province_id")
+    @Column(name = "district_id")
     private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "province_id", nullable = false)
+    private Province province;
 
     @Column(name = "name")
     private String name;

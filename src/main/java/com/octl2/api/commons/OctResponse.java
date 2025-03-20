@@ -1,6 +1,7 @@
 package com.octl2.api.commons;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.octl2.api.helper.DateHelper;
 import com.octl2.api.commons.suberror.ApiSubError;
 import com.octl2.api.commons.exception.ErrorMessage;
@@ -12,6 +13,7 @@ import java.util.Collection;
 import java.util.List;
 
 @Getter
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class OctResponse<T> {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DateHelper.GLOBAL_DATE_TIME)
     private final LocalDateTime timestamp = LocalDateTime.now();

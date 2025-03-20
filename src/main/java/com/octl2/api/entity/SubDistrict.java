@@ -6,14 +6,18 @@ import lombok.Setter;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "lc_province")
+@Table(name = "lc_subdistrict")
 @Getter
 @Setter
-public class Province {
+public class SubDistrict {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "province_id")
+    @Column(name = "subdistrict_id")
     private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "district_id", nullable = false)
+    private District district;
 
     @Column(name = "name")
     private String name;
