@@ -1,0 +1,16 @@
+package com.octl2.api.service;
+
+import com.octl2.api.dto.response.LogisticResponse;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+
+public interface LogisticService {
+
+    List<LogisticResponse> getLogisticByProvince(Integer provinceId);
+}

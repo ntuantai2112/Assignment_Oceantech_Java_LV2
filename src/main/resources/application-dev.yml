@@ -11,7 +11,7 @@ spring:
   jpa:
     database: POSTGRESQL
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: false
+    show-sql: true
     generate-ddl: false
     open-in-view: false
     hibernate:
@@ -29,3 +29,6 @@ logging:
       total-size-cap: 10MB
       max-history: 30
       clean-history-on-start: false
+
+
+
