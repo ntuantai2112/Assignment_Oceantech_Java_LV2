@@ -1,13 +1,13 @@
 package com.octl2.api.service.impl;
 
-
 import com.octl2.api.commons.exception.ErrorMessages;
 import com.octl2.api.commons.exception.OctEntityNotFoundException;
-import com.octl2.api.commons.exception.OctException;
 import com.octl2.api.commons.suberror.ApiMessageError;
 import com.octl2.api.dto.response.*;
-import com.octl2.api.entity.Province;
+import com.octl2.api.entity.Partner;
 import com.octl2.api.entity.Warehouse;
+import com.octl2.api.helper.enums.LogisticeEnum;
+import com.octl2.api.helper.enums.PartnerType;
 import com.octl2.api.repository.DefaultDeliveryRepository;
 import com.octl2.api.repository.PartnerRepository;
 import com.octl2.api.repository.ProvinceRepository;
@@ -17,11 +17,11 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.persistence.Tuple;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -30,10 +30,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
+@Transactional
 public class LogisticServiceImpl implements LogisticService {
 
     DefaultDeliveryRepository defaultDeliveryRepo;
-
     ProvinceRepository provinceRepo;
     WarehouseRepository warehouseRepo;
     PartnerRepository partnerRepo;
@@ -41,67 +41,105 @@ public class LogisticServiceImpl implements LogisticService {
     @Override
     public List<LogisticResponse> getLogisticByProvince(Integer provinceId) {
         List<LogisticDTO> results = defaultDeliveryRepo.findLogisticsByProvince(provinceId);
-
         if (results.isEmpty()) {
             throw new OctEntityNotFoundException(
                     ErrorMessages.NOT_FOUND,
-                    new ApiMessageError("No logistic data found for this province")
+                    new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
             );
         }
+        return getLogisticResponses(results);
+    }
+
+    @Override
+    public List<LogisticResponse> getLogisticByProvinceName(String provinceName) {
+        if (provinceName.isEmpty() || provinceName == null) {
+            throw new OctEntityNotFoundException(
+                    ErrorMessages.BAD_REQUEST,
+                    new ApiMessageError(LogisticeEnum.PROVINCE_NAME_NOT_NULL.getMessage())
+            );
+        }
+
+        List<LogisticDTO> results = defaultDeliveryRepo.findLogisticsByProvinceName(provinceName);
+        if (results.isEmpty()) {
+            throw new OctEntityNotFoundException(
+                    ErrorMessages.NOT_FOUND,
+                    new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
+            );
+        }
+        return getLogisticResponses(results);
+    }
+
+    @Override
+    public Page<List<LogisticResponse>> getLogisticByProvinces(Pageable pageable) {
+        Page<List<LogisticDTO>> results = defaultDeliveryRepo.findLogisticsByProvinces(pageable);
+        if (results.isEmpty()) {
+            throw new OctEntityNotFoundException(
+                    ErrorMessages.NOT_FOUND,
+                    new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
+            );
+        }
+        return results.map(this::getLogisticResponses);
+    }
+
+    // Hàm trả về danh sách LogisticResponse
+    private List<LogisticResponse> getLogisticResponses(List<LogisticDTO> results) {
         ProvinceResponse provinceResponse = getProvinceResponse(results);
-
-        List<PartnerResponse> ffmList = results.stream()
-                .filter(row -> row.getFfmId() != null)
-                .map(row -> new PartnerResponse(row.getFfmId(), row.getFfmName()))
-                .collect(Collectors.toList());
-
-        List<PartnerResponse> lmList = results.stream()
-                .filter(row -> row.getLmId() != null)
-                .map(row -> new PartnerResponse(row.getLmId(), row.getLmName()))
-                .collect(Collectors.toList());
-
-//        List<WarehouseResponse> warehouses = results.stream()
-//                .filter(row -> row.getWarehouseId() != null)
-//                .map(row -> new WarehouseResponse(row.getWarehouseId().intValue(), row.getWarehouseName()))
-//                .collect(Collectors.toList());
-
-
+        List<PartnerResponse> ffmList = extractPartners(results, PartnerType.FFM);
+        List<PartnerResponse> lmList = extractPartners(results, PartnerType.LM);
         List<WarehouseResponse> warehouses = extractWarehouses(results);
-
         return Collections.singletonList(new LogisticResponse(provinceResponse, ffmList, lmList, warehouses));
     }
 
-
+    // Hàm Lấy ra giá trị Province
     private ProvinceResponse getProvinceResponse(List<LogisticDTO> results) {
-        ProvinceResponse provinceResponse = provinceRepo.findById(Long.valueOf(results.get(0).getProvinceId()))
+        ProvinceResponse provinceResponse = provinceRepo.findById(results.get(0).getProvinceId())
                 .map(province -> new ProvinceResponse(province.getId(), province.getName(), province.getCode()))
                 .orElseThrow(() -> new OctEntityNotFoundException(
                         ErrorMessages.NOT_FOUND,
-                        new ApiMessageError("No logistic data found for this province")
+                        new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
                 ));
-
         return provinceResponse;
     }
 
-
-    private List<WarehouseResponse> extractWarehouses(List<LogisticDTO> results) {
+    //Hàm lấy ra danh sách partner và Convert từ DTO -> Response
+    private List<PartnerResponse> extractPartners(List<LogisticDTO> results, PartnerType partnerType) {
         return results.stream()
+                .filter(row ->
+                        (partnerType == PartnerType.FFM && row.getFfmId() != null) || (partnerType == PartnerType.LM && row.getLmId() != null))
+                .map(row -> {
+                    Long partnerId = (partnerType == PartnerType.FFM) ? row.getFfmId().longValue() : row.getLmId().longValue();
+                    Partner ffm = partnerRepo.findById(partnerId)
+                            .orElseThrow(() -> new OctEntityNotFoundException(
+                                    ErrorMessages.NOT_FOUND,
+                                    new ApiMessageError("Partner ID "
+                                            + row.getWarehouseId() + " not found")
+                            ));
+                    return new PartnerResponse(ffm.getId().intValue(), ffm.getName(), ffm.getShortname());
+
+                })
+                .collect(Collectors.toList());
+
+    }
+
+
+    //Hàm lấy ra danh sách warehouse và Convert từ DTO -> Response
+    private List<WarehouseResponse> extractWarehouses(List<LogisticDTO> results) {
+
+        List<WarehouseResponse> responses = results.stream()
                 .filter(row -> row.getWarehouseId() != null)
                 .map(row -> {
-//                    Long warehouseId = row.getWarehouseId().longValue();
-
-                    Long warehouseId = 84347L;
-                    System.out.println(warehouseId);
+                    Long warehouseId = row.getWarehouseId().longValue();
                     Warehouse warehouse = warehouseRepo.findById(warehouseId)
                             .orElseThrow(() -> new OctEntityNotFoundException(
                                     ErrorMessages.NOT_FOUND,
                                     new ApiMessageError("Warehouse ID " + row.getWarehouseId() + " not found")
                             ));
 
-                    // Gán giá trị từ entity sang response
                     return new WarehouseResponse(warehouse.getId().intValue(), warehouse.getWarehouseName(), warehouse.getWarehouseShortname(), warehouse.getContactName(), warehouse.getContactPhone(), warehouse.getFullAddress());
                 })
                 .collect(Collectors.toList());
+
+        return responses;
     }
 
 

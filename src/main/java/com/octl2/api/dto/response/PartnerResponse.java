@@ -9,5 +9,5 @@ public class PartnerResponse {
 
     private Integer id;
     private String name;
-//    private String sortName;
+    private String sortName;
 }

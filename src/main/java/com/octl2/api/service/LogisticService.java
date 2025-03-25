@@ -4,6 +4,8 @@ import com.octl2.api.dto.response.LogisticResponse;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,4 +15,6 @@ import java.util.List;
 public interface LogisticService {
 
     List<LogisticResponse> getLogisticByProvince(Integer provinceId);
+    List<LogisticResponse> getLogisticByProvinceName(String provinceName);
+    Page<List<LogisticResponse>> getLogisticByProvinces(Pageable pageable);
 }

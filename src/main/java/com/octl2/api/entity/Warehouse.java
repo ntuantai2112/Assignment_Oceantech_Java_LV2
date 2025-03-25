@@ -21,9 +21,12 @@ public class Warehouse {
     @Column(name = "org_id")
     private Long orgId;
 
-    @ManyToOne
-    @JoinColumn(name = "ffm_id", nullable = false)
-    private Partner fulfilment;
+//    @ManyToOne
+//    @JoinColumn(name = "ffm_id", nullable = false)
+//    private Partner fulfilment;
+
+    @Column(name = "ffm_id", nullable = false)
+    private Long fulfilmentId;
 
     @Column(name = "warehouse_name")
     private String warehouseName;
@@ -43,17 +46,14 @@ public class Warehouse {
     @Column(name = "full_address")
     private String fullAddress;
 
-    @ManyToOne
-    @JoinColumn(name = "wards_id", nullable = false)
-    private SubDistrict subdistrict;
+    @Column(name = "wards_id", nullable = false)
+    private Long subdistrictId;
 
-    @ManyToOne
-    @JoinColumn(name = "district_id")
-    private District district;
+    @Column(name = "district_id")
+    private Long districtId;
 
-    @ManyToOne
-    @JoinColumn(name = "province_id")
-    private Province province;
+    @Column(name = "province_id")
+    private Long provinceId;
 
     @Column(name = "email")
     private String email;

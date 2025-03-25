@@ -15,9 +15,8 @@ public class SubDistrict {
     @Column(name = "subdistrict_id")
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "district_id", nullable = false)
-    private District district;
+    @Column(name = "district_id", nullable = false)
+    private Long districtId;
 
     @Column(name = "name")
     private String name;

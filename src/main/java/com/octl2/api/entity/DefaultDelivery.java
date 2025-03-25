@@ -20,17 +20,14 @@ public class DefaultDelivery {
     @Column(name = "location_id")
     private Integer location;
 
-    @ManyToOne
-    @JoinColumn(name = "ffm_id", nullable = false)
-    private Partner fulfilment;
+    @Column(name = "ffm_id", nullable = false)
+    private Long fulfilmentId;
 
-    @ManyToOne
-    @JoinColumn(name = "lastmile_id", nullable = false)
-    private Partner lastmile;
+    @Column(name = "lastmile_id", nullable = false)
+    private Long lastmileId;
 
-    @ManyToOne
-    @JoinColumn(name = "warehouse_id", nullable = false)
-    private Warehouse warehouse;
+    @Column(name = "warehouse_id", nullable = false)
+    private Long warehouseId;
 
     @Column(name = "modifyby")
     private Long modifyby;
