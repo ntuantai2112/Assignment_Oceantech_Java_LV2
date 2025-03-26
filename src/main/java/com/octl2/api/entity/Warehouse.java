@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Table(name = "bp_warehouse")
 @Getter
 @Setter
-public class Warehouse {
+public class Warehouse extends AbstractEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,9 +21,6 @@ public class Warehouse {
     @Column(name = "org_id")
     private Long orgId;
 
-//    @ManyToOne
-//    @JoinColumn(name = "ffm_id", nullable = false)
-//    private Partner fulfilment;
 
     @Column(name = "ffm_id", nullable = false)
     private Long fulfilmentId;
@@ -60,9 +57,6 @@ public class Warehouse {
 
     @Column(name = "modifyby")
     private Long modifyby;
-
-    @Column(name = "modifydate")
-    private LocalDateTime modifydate;
 
     @Column(name = "wh_code_inpartner")
     private String whCodeInpartner;

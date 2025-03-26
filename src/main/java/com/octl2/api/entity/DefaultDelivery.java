@@ -1,16 +1,21 @@
 package com.octl2.api.entity;
 
+import jdk.jfr.Timestamp;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.repository.Temporal;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.Date;
 
 @Entity
 @Table(name = "cf_default_delivery")
 @Getter
 @Setter
-public class DefaultDelivery {
+
+public class DefaultDelivery extends AbstractEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,8 +37,9 @@ public class DefaultDelivery {
     @Column(name = "modifyby")
     private Long modifyby;
 
-    @Column(name = "modifydate")
-    private LocalDateTime modifydate;
+
+
+
 
 
 }

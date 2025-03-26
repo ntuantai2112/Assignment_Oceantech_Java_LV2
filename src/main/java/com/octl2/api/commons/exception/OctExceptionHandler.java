@@ -79,6 +79,18 @@ public class OctExceptionHandler {
         return new ResponseEntity<>(OctResponse.build(ex.getErrMsg(), ex.getApiSubErrors()), HttpStatus.OK);
     }
 
+    @ExceptionHandler(RuntimeException.class)
+    protected ResponseEntity<OctResponse<String>> handleRuntimeException(RuntimeException ex) {
+        log.info("handleRuntimeException. Msg = {}", ex.getMessage(), ex);
+        return new ResponseEntity<>(OctResponse.build(ex.getMessage(), HttpStatus.BAD_REQUEST.value()), HttpStatus.OK);
+    }
+
+    @ExceptionHandler(Exception.class)
+    protected ResponseEntity<OctResponse<String>> handleException(Exception ex) {
+        log.info("handleException. Msg = {}", ex.getMessage(), ex);
+        return new ResponseEntity<>(OctResponse.build(ex.getMessage(), HttpStatus.BAD_REQUEST.value()), HttpStatus.OK);
+    }
+
     private ResponseEntity<OctResponse<String>> buildResponseEntity(OctException ex) {
         return new ResponseEntity<>(OctResponse.buildApplicationException(ex), HttpStatus.OK);
     }

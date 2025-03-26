@@ -16,5 +16,8 @@ public interface LogisticService {
 
     List<LogisticResponse> getLogisticByProvince(Integer provinceId);
     List<LogisticResponse> getLogisticByProvinceName(String provinceName);
-    Page<List<LogisticResponse>> getLogisticByProvinces(Pageable pageable);
+    Page<LogisticResponse> getLogisticByProvincesPage(Pageable pageable);
+    List<LogisticResponse> getLogisticByProvinces();
+
+    Page<LogisticResponse> getLogisticByDistricts(Pageable pageable);
 }

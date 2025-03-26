@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -41,13 +42,20 @@ public class LogisticController {
         return OctResponse.build(logisticResponses);
     }
 
-//    @GetMapping("/provinces")
-//    public OctResponse<List<LogisticResponse>> getLogisticProvinces( @RequestParam(defaultValue = "0") int page,
-//                                                                     @RequestParam(defaultValue = "5") int size) {
-//
-//        Pageable pageable = PageRequest.of(page,size);
-//        Page<LogisticResponse> logisticResponses = logisticService.getLogisticByProvinces(pageable);
-//        return OctResponse.build(logisticResponses);
-//    }
+    @GetMapping("/provinces/paged")
+    public OctResponse<Page<LogisticResponse>> getLogisticProvincesPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<LogisticResponse> logisticResponses = logisticService.getLogisticByProvincesPage(pageable);
+        return OctResponse.build(logisticResponses, pageable.getPageSize());
+    }
+
+    @GetMapping("/provinces")
+    public OctResponse<List<LogisticResponse>> getLogisticProvinces() {
+        List<LogisticResponse> logisticResponses = logisticService.getLogisticByProvinces();
+        return OctResponse.build(logisticResponses);
+    }
 
 }

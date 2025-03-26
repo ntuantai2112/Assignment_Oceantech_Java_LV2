@@ -10,7 +10,7 @@ import java.util.List;
 
 @Getter
 @AllArgsConstructor
-public class LogisticResponse {
+public  class LogisticResponse {
 
     private ProvinceResponse province;
     private List<PartnerResponse> fulfilments;

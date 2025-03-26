@@ -17,6 +17,7 @@ import java.util.Optional;
 @Repository
 public interface DefaultDeliveryRepository extends JpaRepository<DefaultDelivery, Long> {
 
+
     // Lấy ra danh sách Logistic theo Province Id
     @Query(value = "SELECT " +
             "p.province_id AS provinceId, " +
@@ -57,8 +58,41 @@ public interface DefaultDeliveryRepository extends JpaRepository<DefaultDelivery
             "LEFT JOIN cf_default_delivery cfd ON cfd.location_id = p.province_id " +
             "LEFT JOIN bp_partner ffm ON cfd.ffm_id = ffm.partner_id AND ffm.partner_type = 122 " +
             "LEFT JOIN bp_partner lm ON cfd.lastmile_id = lm.partner_id AND lm.partner_type = 121 " +
+            "LEFT JOIN bp_warehouse wh ON cfd.warehouse_id = wh.warehouse_id " +
+            "ORDER BY p.province_id ",
+            nativeQuery = true)
+    Page<com.octl2.api.dto.response.LogisticDTO> getLogisticsByProvinces(Pageable pageable);
+
+    @Query(value = "SELECT " +
+            "p.province_id AS provinceId, " +
+            "ffm.partner_id AS ffmId, " +
+            "lm.partner_id AS lmId, " +
+            "wh.warehouse_id AS warehouseId " +
+            "FROM lc_province p " +
+            "LEFT JOIN cf_default_delivery cfd ON cfd.location_id = p.province_id " +
+            "LEFT JOIN bp_partner ffm ON cfd.ffm_id = ffm.partner_id AND ffm.partner_type = 122 " +
+            "LEFT JOIN bp_partner lm ON cfd.lastmile_id = lm.partner_id AND lm.partner_type = 121 " +
             "LEFT JOIN bp_warehouse wh ON cfd.warehouse_id = wh.warehouse_id ",
             nativeQuery = true)
-    Page<List<com.octl2.api.dto.response.LogisticDTO>> findLogisticsByProvinces(Pageable pageable);
+    List<com.octl2.api.dto.response.LogisticDTO> findLogisticsByProvinces();
+
+    // Lấy ra thông tin các Districts và  các Logistics của District trong 1 Province
+    @Query(value = "SELECT DISTINCT " +
+            "dtr.district_id AS districtId, " +
+            "p.province_id AS provinceId, " +
+            "ffm.partner_id AS ffmId, " +
+            "lm.partner_id AS lmId, " +
+            "wh.warehouse_id AS warehouseId, " +
+            "FROM lc_province p " +
+            "LEFT JOIN lc_district dtr ON p.province_id = dtr.province_id " +
+            "LEFT JOIN cf_default_delivery cfd ON cfd.location_id = p.province_id " +
+            "LEFT JOIN bp_partner ffm ON cfd.ffm_id = ffm.partner_id AND ffm.partner_type = 122 " +
+            "LEFT JOIN bp_partner lm ON cfd.lastmile_id = lm.partner_id AND lm.partner_type = 121 " +
+            "LEFT JOIN bp_warehouse wh ON cfd.warehouse_id = wh.warehouse_id " +
+            "WHERE cfd.location_id = :provinceId " +
+            "AND dtr.province_id IN (SELECT lp.province_id FROM lc_province lp WHERE lp.province_id = :provinceId) " +
+            "ORDER BY dtr.district_id",
+            nativeQuery = true)
+    Page<com.octl2.api.dto.response.LogisticDTO> getLogisticsByDistricts(@Param("provinceId") Long provinceId, Pageable pageable);
 
 }

@@ -70,15 +70,45 @@ public class LogisticServiceImpl implements LogisticService {
     }
 
     @Override
-    public Page<List<LogisticResponse>> getLogisticByProvinces(Pageable pageable) {
-        Page<List<LogisticDTO>> results = defaultDeliveryRepo.findLogisticsByProvinces(pageable);
+    public List<LogisticResponse> getLogisticByProvinces() {
+        List<LogisticDTO> results = defaultDeliveryRepo.findLogisticsByProvinces();
         if (results.isEmpty()) {
             throw new OctEntityNotFoundException(
                     ErrorMessages.NOT_FOUND,
                     new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
             );
         }
-        return results.map(this::getLogisticResponses);
+        return getLogisticResponses(results);
+    }
+
+
+
+    // Hàm lấy ra danh sách các Province và Logistic có phân trang
+    @Override
+    public Page<LogisticResponse> getLogisticByProvincesPage(Pageable pageable) {
+        Page<LogisticDTO> results = defaultDeliveryRepo.getLogisticsByProvinces(pageable);
+
+        if (results.isEmpty()) {
+            throw new OctEntityNotFoundException(
+                    ErrorMessages.NOT_FOUND,
+                    new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
+            );
+        }
+
+        return results.map(this::convertToLogisticResponse);
+    }
+
+
+
+    @Override
+    public Page<LogisticResponse> getLogisticByDistricts(Pageable pageable) {
+        return null;
+    }
+
+
+    // Hàm Convert giá trị từ LogisticDTO -> Response
+    private LogisticResponse convertToLogisticResponse(LogisticDTO dto) {
+        return getLogisticResponses(Collections.singletonList(dto)).get(0);
     }
 
     // Hàm trả về danh sách LogisticResponse
