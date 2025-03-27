@@ -33,29 +33,44 @@ public class LogisticController {
     @GetMapping("/province/{provinceId}")
     public OctResponse<List<LogisticResponse>> getLogisticProvince(@PathVariable("provinceId") Integer provinceId) {
         List<LogisticResponse> logisticResponses = logisticService.getLogisticByProvince(provinceId);
+        log.info("Get province and logistics by provinceId successfully!");
         return OctResponse.build(logisticResponses);
     }
 
     @GetMapping("/province")
     public OctResponse<List<LogisticResponse>> getLogisticProvinceName(@RequestParam(name = "name", required = false) String provinceName) {
         List<LogisticResponse> logisticResponses = logisticService.getLogisticByProvinceName(provinceName);
+        log.info("Get province and logistics by province name successfully!");
         return OctResponse.build(logisticResponses);
-    }
-
-    @GetMapping("/provinces/paged")
-    public OctResponse<Page<LogisticResponse>> getLogisticProvincesPaged(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "5") int size) {
-
-        Pageable pageable = PageRequest.of(page, size);
-        Page<LogisticResponse> logisticResponses = logisticService.getLogisticByProvincesPage(pageable);
-        return OctResponse.build(logisticResponses, pageable.getPageSize());
     }
 
     @GetMapping("/provinces")
+    public OctResponse<Page<LogisticResponse>> getLogisticProvincesPaged(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<LogisticResponse> logisticResponses = logisticService.getLogisticByProvincesPage(pageable);
+        log.info("Get provinces and logistics successfully!");
+        return OctResponse.build(logisticResponses, pageable.getPageSize());
+    }
+
+    @GetMapping("/provinces-list")
     public OctResponse<List<LogisticResponse>> getLogisticProvinces() {
         List<LogisticResponse> logisticResponses = logisticService.getLogisticByProvinces();
         return OctResponse.build(logisticResponses);
+    }
+
+    @GetMapping("/districts")
+    public OctResponse<Page<LogisticResponse>> getLogisticDistricts(
+            @RequestParam(name = "provinceId") Long provinceId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<LogisticResponse> logisticResponses = logisticService.getLogisticByDistricts(provinceId, pageable);
+        log.info("Get district and logistics successfully!");
+        return OctResponse.build(logisticResponses, pageable.getPageSize());
     }
 
 }

@@ -8,6 +8,7 @@ import lombok.Getter;
 public enum LogisticeEnum {
 
     PROVINCE_NOT_FOUND("No logistic data found for this province"),
+    DISTRICT_NOT_FOUND("No logistic data found for this district"),
     PROVINCE_NAME_NOT_NULL("Province name is required"),
     LOGISTICS_NOT_FOUND("No logistic data found for this province"),
     WAREHOUSE_NOT_FOUND("No warehouse data available"),

@@ -15,9 +15,12 @@ import java.util.List;
 public interface LogisticService {
 
     List<LogisticResponse> getLogisticByProvince(Integer provinceId);
+
     List<LogisticResponse> getLogisticByProvinceName(String provinceName);
+
     Page<LogisticResponse> getLogisticByProvincesPage(Pageable pageable);
+
     List<LogisticResponse> getLogisticByProvinces();
 
-    Page<LogisticResponse> getLogisticByDistricts(Pageable pageable);
+    Page<LogisticResponse> getLogisticByDistricts(Long provinceId, Pageable pageable);
 }
