@@ -4,6 +4,7 @@ import com.octl2.api.commons.OctResponse;
 import com.octl2.api.commons.exception.ErrorMessage;
 import com.octl2.api.commons.exception.ErrorMessages;
 import com.octl2.api.dto.response.LogisticResponse;
+import com.octl2.api.helper.enums.LogisticeEnum;
 import com.octl2.api.service.LogisticService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -32,12 +33,19 @@ public class LogisticController {
 
     @GetMapping("/province/{provinceId}")
     public OctResponse<List<LogisticResponse>> getLogisticProvince(@PathVariable("provinceId") Integer provinceId) {
-        List<LogisticResponse> logisticResponses = logisticService.getLogisticByProvince(provinceId);
+        List<LogisticResponse> logisticResponses = logisticService.getLogisticByProvinceId(provinceId);
         log.info("Get province and logistics by provinceId successfully!");
         return OctResponse.build(logisticResponses);
     }
 
-    @GetMapping("/province")
+    @GetMapping("/province}")
+    public OctResponse<List<LogisticResponse>> getLogisticProvinceById(@RequestParam("provinceId") @Min(1) Integer provinceId) {
+        List<LogisticResponse> logisticResponses = logisticService.getLogisticByProvinceId(provinceId);
+        log.info("Get province and logistics by provinceId successfully!");
+        return OctResponse.build(logisticResponses);
+    }
+
+    @GetMapping("/province-by-name")
     public OctResponse<List<LogisticResponse>> getLogisticProvinceName(@RequestParam(name = "name", required = false) String provinceName) {
         List<LogisticResponse> logisticResponses = logisticService.getLogisticByProvinceName(provinceName);
         log.info("Get province and logistics by province name successfully!");
@@ -52,7 +60,7 @@ public class LogisticController {
         Pageable pageable = PageRequest.of(page, size);
         Page<LogisticResponse> logisticResponses = logisticService.getLogisticByProvincesPage(pageable);
         log.info("Get provinces and logistics successfully!");
-        return OctResponse.build(logisticResponses, pageable.getPageSize());
+        return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_PROVINCE_SUCCESS.getMessage(), pageable.getPageSize());
     }
 
     @GetMapping("/provinces-list")
@@ -63,14 +71,26 @@ public class LogisticController {
 
     @GetMapping("/districts")
     public OctResponse<Page<LogisticResponse>> getLogisticDistricts(
-            @RequestParam(name = "provinceId") Long provinceId,
+            @RequestParam(name = "provinceId") Integer provinceId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         Pageable pageable = PageRequest.of(page, size);
         Page<LogisticResponse> logisticResponses = logisticService.getLogisticByDistricts(provinceId, pageable);
         log.info("Get district and logistics successfully!");
-        return OctResponse.build(logisticResponses, pageable.getPageSize());
+        return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_DISTRICT_SUCCESS.getMessage(), pageable.getPageSize());
+    }
+
+    @GetMapping("/communes")
+    public OctResponse<Page<LogisticResponse>> getLogisticSubDistricts(
+            @RequestParam(name = "districtId") Integer districtId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<LogisticResponse> logisticResponses = logisticService.getLogisticBySubDistricts(districtId, pageable);
+        log.info("Get Sub District and logistics successfully!");
+        return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_SUBDISTRICT_SUCCESS.getMessage(), pageable.getPageSize());
     }
 
 }

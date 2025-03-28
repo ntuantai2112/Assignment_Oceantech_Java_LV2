@@ -14,18 +14,30 @@ import java.util.Optional;
 public interface ProvinceRepository extends JpaRepository<Province, Long> {
 
     @Query(value = "SELECT " +
-            "   p.province_id AS id " +
-            "   , p.name " +
-            "   , p.shortname " +
-            "   , p.code " +
-            "   , p.dcsr AS description " +
-            " FROM lc_province AS p " +
-            " WHERE " +
-            "   p.province_id = :id "
+                   "   p.province_id AS id " +
+                   "   , p.name " +
+                   "   , p.shortname " +
+                   "   , p.code " +
+                   "   , p.dcsr AS description " +
+                   " FROM lc_province AS p " +
+                   " WHERE " +
+                   "   p.province_id = :id "
             , nativeQuery = true)
     ProvinceDTO getDtoById(@Param("id") long id);
 
 
-    @Query("SELECT p FROM Province p WHERE p.id = :provinceId")
-    Optional<Province> findByProvinceId(Long provinceId);
+    @Query(value = "SELECT " +
+                   "   p.province_id AS id " +
+                   "   , p.name " +
+                   "   , p.shortname " +
+                   "   , p.code " +
+                   "   , p.dcsr AS description " +
+                   " FROM lc_province AS p " +
+                   " LEFT JOIN lc_district ld on p.province_id  = ld.province_id " +
+                   " WHERE " +
+                   "   ld.district_id = :districtId "
+            , nativeQuery = true)
+    Optional<ProvinceDTO> findByDistrictId(Long districtId);
+
+
 }

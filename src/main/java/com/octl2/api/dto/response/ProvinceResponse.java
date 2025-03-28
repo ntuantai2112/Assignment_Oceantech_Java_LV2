@@ -17,7 +17,8 @@ public class ProvinceResponse extends LogisticData {
     private Long id;
     private String name;
     private String code;
-    private DistrictResponse district;
     private List<DistrictResponse> districts;
-    
+    private DistrictResponse district;
+
+
 }

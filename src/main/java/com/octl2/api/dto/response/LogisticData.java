@@ -13,4 +13,5 @@ public class LogisticData {
     private List<PartnerResponse> fulfilments;
     private List<PartnerResponse> lastmiles;
     private List<WarehouseResponse> warehouses;
+
 }

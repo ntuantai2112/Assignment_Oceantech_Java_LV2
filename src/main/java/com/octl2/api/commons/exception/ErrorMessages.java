@@ -11,7 +11,7 @@ public enum ErrorMessages implements ErrorMessage {
     BAD_REQUEST(400, "Bad request"),
     INVALID_VALUE(400_001, "Invalid value"),
     SAVE_DATABASE_ERROR(400_002, "Save database error"),
-
+    MISSING_REQUIRED_FIELD(400_003, "Missing required field"),
     NOT_FOUND(404, "Resource not found"),
     ;
 

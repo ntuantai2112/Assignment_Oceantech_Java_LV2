@@ -46,8 +46,26 @@ public class OctResponse<T> {
         return response;
     }
 
+    public static <T> OctResponse<T> build(T data, String message) {
+        OctResponse<T> response = new OctResponse<>();
+        response.data = data;
+        if (data instanceof Collection) {
+            response.total = ((Collection<?>) data).size();
+        }
+        response.code = 200;
+        response.message = message;
+        return response;
+    }
+
     public static <T> OctResponse<T> build(T data, Integer total) {
         OctResponse<T> response = build(data);
+        response.total = total;
+        return response;
+    }
+
+    public static <T> OctResponse<T> build(T data, String message, Integer total) {
+        OctResponse<T> response = build(data);
+        response.message = message;
         response.total = total;
         return response;
     }

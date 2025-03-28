@@ -10,10 +10,14 @@ public interface LogisticDTO {
 
     Long getDistrictId();
 
+    Long getSubDistrictId();
+
     Long getFfmId();
 
     Long getLmId();
 
     Long getWarehouseId();
+
+
 }
 

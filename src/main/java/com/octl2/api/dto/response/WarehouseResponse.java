@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Getter;
 
 @Getter
-@AllArgsConstructor
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class WarehouseResponse {
@@ -19,8 +18,4 @@ public class WarehouseResponse {
     private String address;
 
 
-    public WarehouseResponse(Integer id, String name) {
-        this.id = id;
-        this.name = name;
-    }
 }
