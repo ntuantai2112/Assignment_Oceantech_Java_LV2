@@ -45,7 +45,7 @@ public interface DefaultDeliveryRepository extends JpaRepository<DefaultDelivery
             nativeQuery = true)
     List<LogisticDTO> findLogisticsByProvinceName(@Param("provinceName") String provinceName);
 
-    // Lấy ra danh sách Logistic và danh sách Province
+    // Lấy ra danh sách Logistic và danh sách Province có phân trang
     @Query(value = "SELECT " +
                    "p.province_id AS provinceId, " +
                    "ffm.partner_id AS ffmId, " +
@@ -60,6 +60,24 @@ public interface DefaultDeliveryRepository extends JpaRepository<DefaultDelivery
             nativeQuery = true)
     Page<LogisticDTO> getLogisticsByProvinces(Pageable pageable);
 
+
+    @Query(value = "SELECT " +
+                   "p.province_id AS provinceId, " +
+                   "ffm.partner_id AS ffmId, " +
+                   "lm.partner_id AS lmId, " +
+                   "wh.warehouse_id AS warehouseId " +
+                   "FROM lc_province p " +
+                   "LEFT JOIN cf_default_delivery cfd ON cfd.location_id = p.province_id " +
+                   "LEFT JOIN bp_partner ffm ON cfd.ffm_id = ffm.partner_id AND ffm.partner_type = 122 " +
+                   "LEFT JOIN bp_partner lm ON cfd.lastmile_id = lm.partner_id AND lm.partner_type = 121 " +
+                   "LEFT JOIN bp_warehouse wh ON cfd.warehouse_id = wh.warehouse_id " +
+                   "WHERE (:provinceId IS NULL OR p.province_id = CAST(:provinceId AS INTEGER)" +
+                   "ORDER BY p.province_id ",
+            nativeQuery = true)
+    Page<LogisticDTO> getLogisticsByProvinces(@Param("provinceId") Long provinceId, Pageable pageable);
+
+
+    // Lấy ra danh sách Logistic và danh sách Province
     @Query(value = "SELECT " +
                    "p.province_id AS provinceId, " +
                    "ffm.partner_id AS ffmId, " +

@@ -52,16 +52,17 @@ public class LogisticController {
         return OctResponse.build(logisticResponses);
     }
 
+
     @GetMapping("/provinces")
     public OctResponse<Page<LogisticResponse>> getLogisticProvincesPaged(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-
         Pageable pageable = PageRequest.of(page, size);
         Page<LogisticResponse> logisticResponses = logisticService.getLogisticByProvincesPage(pageable);
         log.info("Get provinces and logistics successfully!");
         return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_PROVINCE_SUCCESS.getMessage(), pageable.getPageSize());
     }
+
 
     @GetMapping("/provinces-list")
     public OctResponse<List<LogisticResponse>> getLogisticProvinces() {

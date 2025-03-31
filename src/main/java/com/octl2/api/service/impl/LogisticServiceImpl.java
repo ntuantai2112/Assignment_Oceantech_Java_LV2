@@ -2,6 +2,7 @@ package com.octl2.api.service.impl;
 
 import com.octl2.api.commons.exception.ErrorMessages;
 import com.octl2.api.commons.exception.OctEntityNotFoundException;
+import com.octl2.api.commons.exception.OctException;
 import com.octl2.api.commons.suberror.ApiMessageError;
 import com.octl2.api.dto.LogisticDTO;
 import com.octl2.api.dto.ProvinceDTO;
@@ -23,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -101,6 +101,7 @@ public class LogisticServiceImpl implements LogisticService {
         return results.map(this::convertToProvinceResponse);
     }
 
+
     // Lấy ra danh sách Districts và Logistic theo ProvinceId
     @Override
     public Page<LogisticResponse> getLogisticByDistricts(Integer provinceId, Pageable pageable) {
@@ -113,13 +114,13 @@ public class LogisticServiceImpl implements LogisticService {
                     new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
             );
         }
-        ProvinceResponse provinceResponse = getProvinceResponse(provinceId);
+        ProvinceResponse provinceResponse = getDataResponseById(provinceId, ProvinceResponse.class);
         //Nhóm thông tin
         Map<Long, List<LogisticDTO>> groupedByDistrict = results.stream()
                 .collect(Collectors.groupingBy(LogisticDTO::getDistrictId));
 
         List<DistrictResponse> districtResponses = groupedByDistrict.entrySet().stream()
-                .map(entry -> getDistrictResponse(entry.getKey(), entry.getValue())
+                .map(entry -> getLocationResponse(entry.getKey(), entry.getValue(), DistrictResponse.class)
                 )
                 .collect(Collectors.toList());
         provinceResponse.setDistricts(districtResponses);
@@ -141,12 +142,12 @@ public class LogisticServiceImpl implements LogisticService {
             );
         }
         ProvinceResponse provinceResponse = convertProvinceDTO(districtId);
-        DistrictResponse districtResponse = getDistrictResponse(districtId);
+        DistrictResponse districtResponse = getDataResponseById(districtId, DistrictResponse.class);
         Map<Long, List<LogisticDTO>> groupBySubdistrictId = results.stream()
                 .collect(Collectors.groupingBy(LogisticDTO::getSubDistrictId));
 
         List<SubDistrictResponse> subDistrictList = groupBySubdistrictId.entrySet().stream()
-                .map(entry -> getSubDistrictResponse(entry.getKey(), entry.getValue()))
+                .map(entry -> getLocationResponse(entry.getKey(), entry.getValue(), SubDistrictResponse.class))
                 .collect(Collectors.toList());
         districtResponse.setSubDistricts(subDistrictList);
 
@@ -156,9 +157,10 @@ public class LogisticServiceImpl implements LogisticService {
                 .build());
     }
 
+
     // Hàm Validate provinceId
     private void validateData(Integer input) {
-        if (input == null || Objects.isNull(input)) {
+        if (input == null) {
             throw new OctEntityNotFoundException(
                     ErrorMessages.MISSING_REQUIRED_FIELD,
                     new ApiMessageError(LogisticeEnum.PROVINCE_ID_NOT_NULL.getMessage())
@@ -180,7 +182,7 @@ public class LogisticServiceImpl implements LogisticService {
     }
 
 
-    // Hàm trả về danh sách LogisticResponse
+    // Hàm trả về danh sách LogisticResponse - với Province
     private List<LogisticResponse> getLogisticResponsesWithProvince(List<LogisticDTO> results) {
         ProvinceResponse provinceResponse = getProvinceResponse(results);
         List<PartnerResponse> ffmList = extractPartners(results, PartnerType.FFM);
@@ -218,40 +220,119 @@ public class LogisticServiceImpl implements LogisticService {
         return provinceResponse;
     }
 
-    private ProvinceResponse getProvinceResponse(Integer provinceId) {
-        return provinceRepo.findById(provinceId.longValue())
-                .map(province -> ProvinceResponse.builder()
-                        .id(province.getId())
-                        .name(province.getName())
-                        .code(province.getCode())
-                        .build())
+    // Chức năng Convert giá trị ProvinceDTO sang ProvinceResponse;
+    private ProvinceResponse convertProvinceDTO(Integer districtId) {
+        ProvinceDTO provinceDTO = provinceRepo.findByDistrictId(districtId.longValue())
                 .orElseThrow(() -> new OctEntityNotFoundException(
                         ErrorMessages.NOT_FOUND,
-                        new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
+                        new ApiMessageError(LogisticeEnum.PROVINCE_NOT_FOUND.getMessage())
                 ));
+        return ProvinceResponse.builder()
+                .id(provinceDTO.getId())
+                .name(provinceDTO.getName())
+                .code(provinceDTO.getCode())
+                .build();
     }
 
-    private DistrictResponse getDistrictResponse(Integer districtId) {
-        return districtRepo.findById(districtId.longValue())
-                .map(district -> DistrictResponse.builder()
-                        .id(district.getId())
-                        .name(district.getName())
-                        .code(district.getCode())
-                        .build())
-                .orElseThrow(() -> new OctEntityNotFoundException(
-                        ErrorMessages.NOT_FOUND,
-                        new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
-                ));
+    // Hàm lấy ra giá trị Response theo locationId truyền vào và trả về đối tượng tương ứng
+    private <T> T getDataResponseById(Integer locationId, Class<T> responseType) {
+        if ((responseType == ProvinceResponse.class)) {
+            Province province = provinceRepo.findById(locationId.longValue())
+                    .orElseThrow(() -> new OctEntityNotFoundException(
+                            ErrorMessages.NOT_FOUND,
+                            new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
+                    ));
+
+            return responseType.cast(ProvinceResponse.builder()
+                    .id(province.getId())
+                    .name(province.getName())
+                    .code(province.getCode())
+                    .build());
+
+        } else if (responseType == DistrictResponse.class) {
+            District district = districtRepo.findById(locationId.longValue())
+                    .orElseThrow(() -> new OctEntityNotFoundException(
+                            ErrorMessages.NOT_FOUND,
+                            new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
+                    ));
+
+            return responseType.cast(DistrictResponse.builder()
+                    .id(district.getId())
+                    .name(district.getName())
+                    .code(district.getCode())
+                    .build());
+
+        }
+        log.error("Unsupported type: {}" + responseType.getSimpleName());
+        throw new OctException(ErrorMessages.UNSUPPORTED_TYPE);
+
     }
 
+    // Hàm Convert giá trị từ Entity -> Response theo entity truyền vào
+    private <T> T convertLocationResponse(Object entity, Class<T> responseType) {
+        Long entityId;
+        if (entity instanceof District) {
+            entityId = ((District) entity).getId();
+            return responseType.cast(districtRepo.findById(entityId)
+                    .map(district -> DistrictResponse.builder()
+                            .id(district.getId())
+                            .name(district.getName())
+                            .code(district.getCode())
+                            .build()
+                    ).orElseThrow(() -> new OctEntityNotFoundException(
+                            ErrorMessages.NOT_FOUND,
+                            new ApiMessageError(LogisticeEnum.DISTRICT_NOT_FOUND.getMessage())
+                    )));
+        } else if (entity instanceof SubDistrict) {
+            entityId = ((SubDistrict) entity).getId();
+            return responseType.cast(subDistrictRepo.findById(entityId)
+                    .map(subDistrict -> SubDistrictResponse.builder()
+                            .id(subDistrict.getId())
+                            .name(subDistrict.getName())
+                            .code(subDistrict.getCode())
+                            .build()
+                    ).orElseThrow(() -> new OctEntityNotFoundException(
+                            ErrorMessages.NOT_FOUND,
+                            new ApiMessageError(LogisticeEnum.SUB_DISTRICT_NOT_FOUND.getMessage())
+                    )));
+        }
+        throw new OctException(ErrorMessages.UNSUPPORTED_TYPE);
 
-    //Hàm lấy ra danh sách partner và Convert từ DTO -> Response
-    private List<PartnerResponse> extractPartners(List<LogisticDTO> results, PartnerType partnerType) {
-        return results.stream()
-                .filter(row -> isValidPartnerType(row, partnerType))
-                .map(row -> buildPartnerResponse(row, partnerType))
-                .collect(Collectors.toList());
     }
+
+    // Chức năng Convert đối tượng từ DTO -> Response theo id và list
+    private <T> T getLocationResponse(Long locationId, List<LogisticDTO> results, Class<T> responseType) {
+
+        if (responseType == DistrictResponse.class) {
+            District district = districtRepo.findById(locationId)
+                    .orElseThrow(() -> new OctEntityNotFoundException(
+                            ErrorMessages.NOT_FOUND,
+                            new ApiMessageError(LogisticeEnum.DISTRICT_NOT_FOUND.getMessage())
+                    ));
+            return responseType.cast(DistrictResponse.builder()
+                    .district(convertLocationResponse(district, DistrictResponse.class))
+                    .fulfilments(extractPartners(results, PartnerType.FFM))
+                    .lastmiles(extractPartners(results, PartnerType.LM))
+                    .warehouses(extractWarehouses(results))
+                    .build());
+
+        } else if (responseType == SubDistrictResponse.class) {
+            SubDistrict subDistrict = subDistrictRepo.findById(locationId)
+                    .orElseThrow(() -> new OctEntityNotFoundException(
+                            ErrorMessages.NOT_FOUND,
+                            new ApiMessageError(LogisticeEnum.SUB_DISTRICT_NOT_FOUND.getMessage())
+                    ));
+
+            return responseType.cast(SubDistrictResponse.builder()
+                    .subDistrict(convertLocationResponse(subDistrict, SubDistrictResponse.class))
+                    .fulfilments(extractPartners(results, PartnerType.FFM))
+                    .lastmiles(extractPartners(results, PartnerType.LM))
+                    .warehouses(extractWarehouses(results))
+                    .build());
+        }
+        throw new OctException(ErrorMessages.UNSUPPORTED_TYPE);
+    }
+
 
     // Chức năng Validate PartnerType
     private boolean isValidPartnerType(LogisticDTO row, PartnerType partnerType) {
@@ -274,12 +355,11 @@ public class LogisticServiceImpl implements LogisticService {
                 .build();
     }
 
-
-    //Hàm lấy ra danh sách warehouse và Convert từ DTO -> Response
-    private List<WarehouseResponse> extractWarehouses(List<LogisticDTO> results) {
+    //Hàm lấy ra danh sách partner và Convert từ DTO -> Response
+    private List<PartnerResponse> extractPartners(List<LogisticDTO> results, PartnerType partnerType) {
         return results.stream()
-                .filter(row -> row.getWarehouseId() != null)
-                .map(row -> buildWarehouseResponse(row))
+                .filter(partner -> isValidPartnerType(partner, partnerType))
+                .map(partner -> buildPartnerResponse(partner, partnerType))
                 .collect(Collectors.toList());
     }
 
@@ -299,84 +379,16 @@ public class LogisticServiceImpl implements LogisticService {
                 ));
     }
 
-    // Hàm Lấy ra giá trị DistrictResponse từ DistrictEntity
-    private DistrictResponse convertDistrictResponse(District districtEntity) {
-        DistrictResponse districtResponse;
-        districtResponse = districtRepo.findById(districtEntity.getId())
-                .map(district -> DistrictResponse.builder()
-                        .id(district.getId())
-                        .name(district.getName())
-                        .code(district.getCode())
-                        .build()
-                ).orElseThrow(() -> new OctEntityNotFoundException(
-                        ErrorMessages.NOT_FOUND,
-                        new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
-                ));
-        return districtResponse;
-    }
-
-    // Chức năng Convert List LogisticDTO -> DistrictResponse
-    private DistrictResponse getDistrictResponse(Long districtId, List<LogisticDTO> results) {
-        District district = districtRepo.findById(districtId)
-                .orElseThrow(() -> new OctEntityNotFoundException(
-                        ErrorMessages.NOT_FOUND,
-                        new ApiMessageError(LogisticeEnum.DISTRICT_NOT_FOUND.getMessage())
-                ));
-
-//        LogisticData logisticData = getLogisticData(extractPartners(results, PartnerType.FFM), extractPartners(results, PartnerType.LM), extractWarehouses(results));
-
-        return DistrictResponse.builder()
-                .district(convertDistrictResponse(district))
-                .fulfilments(extractPartners(results, PartnerType.FFM))
-                .lastmiles(extractPartners(results, PartnerType.LM))
-                .warehouses(extractWarehouses(results))
-                .build();
+    //Hàm lấy ra danh sách warehouse và Convert từ DTO -> Response
+    private List<WarehouseResponse> extractWarehouses(List<LogisticDTO> results) {
+        return results.stream()
+                .filter(warehouse -> warehouse.getWarehouseId() != null)
+                .map(this::buildWarehouseResponse)
+                .collect(Collectors.toList());
     }
 
 
-    // Hàm Lấy ra giá trị DistrictResponse từ DistrictEntity
-    private SubDistrictResponse convertSubDistrict(SubDistrict subDistrictEntity) {
-        SubDistrictResponse subDistrictResponse;
-        subDistrictResponse = subDistrictRepo.findById(subDistrictEntity.getId())
-                .map(subDistrict -> SubDistrictResponse.builder()
-                        .id(subDistrict.getId())
-                        .name(subDistrict.getName())
-                        .code(subDistrict.getCode())
-                        .build()
-                ).orElseThrow(() -> new OctEntityNotFoundException(
-                        ErrorMessages.NOT_FOUND,
-                        new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
-                ));
-        return subDistrictResponse;
-    }
-
-    // Chức năng Convert List LogiticDTO -> SubDistrictResponse
-    private SubDistrictResponse getSubDistrictResponse(Long subDistrictId, List<LogisticDTO> results) {
-        SubDistrict subDistrict = subDistrictRepo.findById(subDistrictId)
-                .orElseThrow(() -> new OctEntityNotFoundException(
-                        ErrorMessages.NOT_FOUND,
-                        new ApiMessageError(LogisticeEnum.DISTRICT_NOT_FOUND.getMessage())
-                ));
-        return SubDistrictResponse.builder()
-                .subDistrict(convertSubDistrict(subDistrict))
-                .fulfilments(extractPartners(results, PartnerType.FFM))
-                .lastmiles(extractPartners(results, PartnerType.LM))
-                .warehouses(extractWarehouses(results))
-                .build();
-    }
+    // Chức năng Export Excel
 
 
-    // Chức năng Convert giá trị ProvinceDTO sang ProvinceResponse;
-    private ProvinceResponse convertProvinceDTO(Integer districtId) {
-        ProvinceDTO provinceDTO = provinceRepo.findByDistrictId(districtId.longValue())
-                .orElseThrow(() -> new OctEntityNotFoundException(
-                        ErrorMessages.NOT_FOUND,
-                        new ApiMessageError(LogisticeEnum.PROVINCE_NOT_FOUND.getMessage())
-                ));
-        return ProvinceResponse.builder()
-                .id(provinceDTO.getId())
-                .name(provinceDTO.getName())
-                .code(provinceDTO.getCode())
-                .build();
-    }
 }

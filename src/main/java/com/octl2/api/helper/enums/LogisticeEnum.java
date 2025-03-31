@@ -14,6 +14,7 @@ public enum LogisticeEnum {
     PROVINCE_ID_INVALID("Invalid Province ID. Please enter a positive number."),
     PROVINCE_ID_NOT_NULL("Province ID cannot be null. Please enter a valid province ID."),
     DISTRICT_NOT_FOUND("No logistic data found for this district"),
+    SUB_DISTRICT_NOT_FOUND("No logistic data found for this subdistrict"),
     PROVINCE_NAME_NOT_NULL("Province name is required"),
     LOGISTICS_NOT_FOUND("No logistic data found for this province"),
     LOGISTICS_ID_INVALID("ID cannot be null. Please enter a valid ID."),
