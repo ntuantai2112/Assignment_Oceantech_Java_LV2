@@ -10,15 +10,21 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.message.Message;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -63,6 +69,19 @@ public class LogisticController {
         return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_PROVINCE_SUCCESS.getMessage(), pageable.getPageSize());
     }
 
+    @GetMapping("/provinces-level")
+    public OctResponse<Page<LogisticResponse>> findLogisticByProvince(
+            @RequestParam(name = "levelMapping", defaultValue = "1") int levelMapping,
+            @RequestParam(name = "provinceId", required = false) Integer provinceId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Long provinceIdValue = (provinceId != null) ? provinceId.longValue() : null;
+        Page<LogisticResponse> logisticResponses = logisticService.findLogisticByProvince(levelMapping, provinceIdValue, pageable);
+        log.info("Get provinces and logistics successfully!");
+        return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_PROVINCE_SUCCESS.getMessage(), pageable.getPageSize());
+    }
+
 
     @GetMapping("/provinces-list")
     public OctResponse<List<LogisticResponse>> getLogisticProvinces() {
@@ -92,6 +111,17 @@ public class LogisticController {
         Page<LogisticResponse> logisticResponses = logisticService.getLogisticBySubDistricts(districtId, pageable);
         log.info("Get Sub District and logistics successfully!");
         return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_SUBDISTRICT_SUCCESS.getMessage(), pageable.getPageSize());
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<ByteArrayResource> exportLogistic(@RequestParam(value = "levelMapping", defaultValue = "1") @Min(1) @Max(3) int LevelMapping) throws IOException {
+        ByteArrayResource file = logisticService.exportLogisticToExcel(LevelMapping);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=logistics.xlsx")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(file);
+
+
     }
 
 }
