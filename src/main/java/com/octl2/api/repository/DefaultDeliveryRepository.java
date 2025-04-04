@@ -15,36 +15,6 @@ import java.util.List;
 public interface DefaultDeliveryRepository extends JpaRepository<DefaultDelivery, Long> {
 
 
-    // Lấy ra danh sách Logistic theo Province Id
-    @Query(value = "SELECT " +
-                   "p.province_id AS provinceId, " +
-                   "ffm.partner_id AS ffmId, " +
-                   "lm.partner_id AS lmId, " +
-                   "wh.warehouse_id AS warehouseId " +
-                   "FROM lc_province p " +
-                   "LEFT JOIN cf_default_delivery cfd ON cfd.location_id = p.province_id " +
-                   "LEFT JOIN bp_partner ffm ON cfd.ffm_id = ffm.partner_id AND ffm.partner_type = 122 " +
-                   "LEFT JOIN bp_partner lm ON cfd.lastmile_id = lm.partner_id AND lm.partner_type = 121 " +
-                   "LEFT JOIN bp_warehouse wh ON cfd.warehouse_id = wh.warehouse_id " +
-                   "WHERE p.province_id = :provinceId",
-            nativeQuery = true)
-    List<LogisticDTO> findLogisticsByProvince(@Param("provinceId") Integer provinceId);
-
-    // Lấy ra danh sách Logistic theo Province Name
-    @Query(value = "SELECT " +
-                   "p.province_id AS provinceId, " +
-                   "ffm.partner_id AS ffmId, " +
-                   "lm.partner_id AS lmId, " +
-                   "wh.warehouse_id AS warehouseId " +
-                   "FROM lc_province p " +
-                   "LEFT JOIN cf_default_delivery cfd ON cfd.location_id = p.province_id " +
-                   "LEFT JOIN bp_partner ffm ON cfd.ffm_id = ffm.partner_id AND ffm.partner_type = 122 " +
-                   "LEFT JOIN bp_partner lm ON cfd.lastmile_id = lm.partner_id AND lm.partner_type = 121 " +
-                   "LEFT JOIN bp_warehouse wh ON cfd.warehouse_id = wh.warehouse_id " +
-                   "WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :provinceName, '%'))",
-            nativeQuery = true)
-    List<LogisticDTO> findLogisticsByProvinceName(@Param("provinceName") String provinceName);
-
     // Lấy ra danh sách Logistic và danh sách Province có phân trang
     @Query(value = "SELECT DISTINCT " +
                    "p.province_id AS provinceId, " +
@@ -66,9 +36,7 @@ public interface DefaultDeliveryRepository extends JpaRepository<DefaultDelivery
                    "LEFT JOIN bp_warehouse wh ON cfd.warehouse_id = wh.warehouse_id " +
                    "ORDER BY p.province_id",
             nativeQuery = true)
-    Page<LogisticDTO> findLogisticsByProvinces(@Param("levelMapping") Integer levelMapping,
-
-                                               Pageable pageable);
+    Page<LogisticDTO> findLogisticsByProvinces(@Param("levelMapping") int levelMapping, Pageable pageable);
 
     @Query(value = "SELECT DISTINCT " +
                    "p.province_id AS provinceId, " +
@@ -79,22 +47,24 @@ public interface DefaultDeliveryRepository extends JpaRepository<DefaultDelivery
                    "LEFT JOIN lc_district dtr ON p.province_id = dtr.province_id " +
                    "LEFT JOIN lc_subdistrict ls ON dtr.district_id = ls.district_id " +
                    "LEFT JOIN cf_default_delivery cfd " +
-                   "ON cfd.location_id = " +
-                   "CASE " +
-                   "WHEN :levelMapping = 1 THEN p.province_id " +
-                   "WHEN :levelMapping = 2 THEN dtr.district_id " +
-                   "WHEN :levelMapping = 3 THEN ls.subdistrict_id " +
-                   "ELSE NULL " +
-                   "END " +
+                   "ON cfd.location_id = CAST( " +
+                   "    CASE " +
+                   "        WHEN CAST(:levelMapping AS INTEGER) = 1 THEN p.province_id " +
+                   "        WHEN CAST(:levelMapping AS INTEGER) = 2 THEN dtr.district_id " +
+                   "        WHEN CAST(:levelMapping AS INTEGER) = 3 THEN ls.subdistrict_id " +
+                   "        ELSE NULL " +
+                   "    END AS INTEGER " +
+                   ") " +
                    "LEFT JOIN bp_partner ffm ON cfd.ffm_id = ffm.partner_id AND ffm.partner_type = 122 " +
                    "LEFT JOIN bp_partner lm ON cfd.lastmile_id = lm.partner_id AND lm.partner_type = 121 " +
                    "LEFT JOIN bp_warehouse wh ON cfd.warehouse_id = wh.warehouse_id " +
-                   "WHERE (:provinceId IS NULL OR p.province_id =:provinceId ) " +
+                   "WHERE (:provinceId IS NULL OR p.province_id = CAST(:provinceId AS INTEGER)) " +
                    "ORDER BY p.province_id",
             nativeQuery = true)
-    Page<LogisticDTO> findLogisticsByProvinces(@Param("levelMapping") Integer levelMapping,
+    Page<LogisticDTO> findLogisticsByProvince(@Param("levelMapping") int levelMapping,
                                                @Param("provinceId") Long provinceId,
                                                Pageable pageable);
+
 
 
     @Query(value = "SELECT " +

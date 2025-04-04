@@ -30,5 +30,7 @@ logging:
       max-history: 30
       clean-history-on-start: false
 
+logistics:
+  levelMapping: 1 # Giá trị level 1 là Province, Giá trị level 2 là District, Giá trị level 3 là SubDistrict
 
 

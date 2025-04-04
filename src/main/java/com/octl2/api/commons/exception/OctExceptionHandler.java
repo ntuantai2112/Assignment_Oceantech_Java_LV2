@@ -6,6 +6,7 @@ import com.octl2.api.commons.suberror.ApiValidatorError;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.InvalidDataAccessResourceUsageException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -90,6 +91,14 @@ public class OctExceptionHandler {
         log.info("handleException. Msg = {}", ex.getMessage(), ex);
         return new ResponseEntity<>(OctResponse.build(ex.getMessage(), HttpStatus.BAD_REQUEST.value()), HttpStatus.OK);
     }
+
+
+    @ExceptionHandler(InvalidDataAccessResourceUsageException.class)
+    protected ResponseEntity<OctResponse<String>> handleInvalidDataException(InvalidDataAccessResourceUsageException ex) {
+        log.info("handleInvalidDataException. Msg = {}", ex.getMessage(), ex);
+        return new ResponseEntity<>(OctResponse.build(ex.getMessage(), HttpStatus.BAD_REQUEST.value()), HttpStatus.OK);
+    }
+
 
     private ResponseEntity<OctResponse<String>> buildResponseEntity(OctException ex) {
         return new ResponseEntity<>(OctResponse.buildApplicationException(ex), HttpStatus.OK);

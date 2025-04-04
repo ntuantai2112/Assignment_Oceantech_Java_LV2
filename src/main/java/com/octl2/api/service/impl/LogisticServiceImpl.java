@@ -3,8 +3,8 @@ package com.octl2.api.service.impl;
 import com.octl2.api.commons.exception.ErrorMessages;
 import com.octl2.api.commons.exception.OctEntityNotFoundException;
 import com.octl2.api.commons.exception.OctException;
-import com.octl2.api.commons.exception.OctInvalidInputException;
 import com.octl2.api.commons.suberror.ApiMessageError;
+import com.octl2.api.config.MappingLevel;
 import com.octl2.api.dto.LogisticDTO;
 import com.octl2.api.dto.ProvinceDTO;
 import com.octl2.api.dto.response.*;
@@ -13,7 +13,6 @@ import com.octl2.api.helper.enums.LogisticeEnum;
 import com.octl2.api.helper.enums.PartnerType;
 import com.octl2.api.repository.*;
 import com.octl2.api.service.LogisticService;
-import jdk.internal.loader.AbstractClassLoaderValue;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -44,40 +43,8 @@ public class LogisticServiceImpl implements LogisticService {
     SubDistrictRepository subDistrictRepo;
     WarehouseRepository warehouseRepo;
     PartnerRepository partnerRepo;
+    MappingLevel mappingLevel;
 
-    // Chức năn lấy thông tin Province và Logistice theo ProvinceId
-    @Override
-    public List<LogisticResponse> getLogisticByProvinceId(Integer provinceId) {
-        validateData(provinceId, LogisticeEnum.PROVINCE_ID_INVALID);
-        List<LogisticDTO> results = defaultDeliveryRepo.findLogisticsByProvince(provinceId);
-        if (results.isEmpty()) {
-            throw new OctEntityNotFoundException(
-                    ErrorMessages.NOT_FOUND,
-                    new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
-            );
-        }
-        return getLogisticResponsesWithProvince(results);
-    }
-
-    // Chức năn lấy thông tin Province và Logistice theo Province Name
-    @Override
-    public List<LogisticResponse> getLogisticByProvinceName(String provinceName) {
-        if (provinceName.isEmpty()) {
-            throw new OctEntityNotFoundException(
-                    ErrorMessages.BAD_REQUEST,
-                    new ApiMessageError(LogisticeEnum.PROVINCE_NAME_NOT_NULL.getMessage())
-            );
-        }
-
-        List<LogisticDTO> results = defaultDeliveryRepo.findLogisticsByProvinceName(provinceName);
-        if (results.isEmpty()) {
-            throw new OctEntityNotFoundException(
-                    ErrorMessages.NOT_FOUND,
-                    new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
-            );
-        }
-        return getLogisticResponsesWithProvince(results);
-    }
 
     // Chức năn lấy thông tin Province và Logistice
     @Override
@@ -95,21 +62,15 @@ public class LogisticServiceImpl implements LogisticService {
 
     // Hàm lấy ra danh sách các Province và Logistic có phân trang
     @Override
-    public Page<LogisticResponse> getLogisticByProvincesPage(Pageable pageable) {
-        Page<LogisticDTO> results = defaultDeliveryRepo.getLogisticsByProvinces(pageable);
-        if (results.isEmpty()) {
+    public Page<LogisticResponse> findLogisticByProvinces(Pageable pageable) {
+
+        int levelMapping = mappingLevel.getLevelMapping();
+        if (Integer.valueOf(levelMapping) == null) {
             throw new OctEntityNotFoundException(
                     ErrorMessages.NOT_FOUND,
-                    new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
+                    new ApiMessageError(LogisticeEnum.LEVEL_MAPPING_NOT_NULL.getMessage())
             );
         }
-        return results.map(this::convertToProvinceResponse);
-    }
-
-
-    // Hàm lấy danh sách các Province và Logistic theo level Mapping
-    @Override
-    public Page<LogisticResponse> findLogisticByProvince(int levelMapping, Pageable pageable) {
         Page<LogisticDTO> results = defaultDeliveryRepo.findLogisticsByProvinces(levelMapping, pageable);
         if (results.isEmpty()) {
             throw new OctEntityNotFoundException(
@@ -120,10 +81,18 @@ public class LogisticServiceImpl implements LogisticService {
         return results.map(this::convertToProvinceResponse);
     }
 
-    // Hàm lấy danh sách các Province và Logistic theo level Mapping có ID Province
+
+    // Hàm lấy danh sách các Province và Logistic theo level Mapping có ID Province Lọc theo ID
     @Override
-    public Page<LogisticResponse> findLogisticByProvince(int levelMapping, Long provinceId, Pageable pageable) {
-        Page<LogisticDTO> results = defaultDeliveryRepo.findLogisticsByProvinces(levelMapping, provinceId, pageable);
+    public Page<LogisticResponse> findLogisticByProvince(Long provinceId, Pageable pageable) {
+        int levelMapping = mappingLevel.getLevelMapping();
+//        if (Integer.valueOf(levelMapping) == null) {
+//            throw new OctEntityNotFoundException(
+//                    ErrorMessages.NOT_FOUND,
+//                    new ApiMessageError(LogisticeEnum.LEVEL_MAPPING_NOT_NULL.getMessage())
+//            );
+//        }
+        Page<LogisticDTO> results = defaultDeliveryRepo.findLogisticsByProvince(levelMapping, provinceId, pageable);
 
         if (results.isEmpty()) {
             throw new OctEntityNotFoundException(
@@ -241,7 +210,6 @@ public class LogisticServiceImpl implements LogisticService {
     // Hàm Lấy ra giá trị ProvinceResponse từ danh sách LogisticDTO
     private ProvinceResponse getProvinceResponse(List<LogisticDTO> results) {
         ProvinceResponse provinceResponse;
-        Long value = results.get(0).getProvinceId();
         provinceResponse = provinceRepo.findById(results.get(0).getProvinceId())
                 .map(province -> ProvinceResponse.builder()
                         .id(province.getId())

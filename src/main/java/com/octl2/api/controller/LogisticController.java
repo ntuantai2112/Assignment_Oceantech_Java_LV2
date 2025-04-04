@@ -37,50 +37,29 @@ public class LogisticController {
 
     LogisticService logisticService;
 
-    @GetMapping("/province/{provinceId}")
-    public OctResponse<List<LogisticResponse>> getLogisticProvince(@PathVariable("provinceId") Integer provinceId) {
-        List<LogisticResponse> logisticResponses = logisticService.getLogisticByProvinceId(provinceId);
-        log.info("Get province and logistics by provinceId successfully!");
-        return OctResponse.build(logisticResponses);
-    }
-
-    @GetMapping("/province}")
-    public OctResponse<List<LogisticResponse>> getLogisticProvinceById(@RequestParam("provinceId") @Min(1) Integer provinceId) {
-        List<LogisticResponse> logisticResponses = logisticService.getLogisticByProvinceId(provinceId);
-        log.info("Get province and logistics by provinceId successfully!");
-        return OctResponse.build(logisticResponses);
-    }
-
-    @GetMapping("/province-by-name")
-    public OctResponse<List<LogisticResponse>> getLogisticProvinceName(@RequestParam(name = "name", required = false) String provinceName) {
-        List<LogisticResponse> logisticResponses = logisticService.getLogisticByProvinceName(provinceName);
-        log.info("Get province and logistics by province name successfully!");
-        return OctResponse.build(logisticResponses);
-    }
-
-
     @GetMapping("/provinces")
     public OctResponse<Page<LogisticResponse>> getLogisticProvincesPaged(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<LogisticResponse> logisticResponses = logisticService.getLogisticByProvincesPage(pageable);
+        Page<LogisticResponse> logisticResponses = logisticService.findLogisticByProvinces(pageable);
         log.info("Get provinces and logistics successfully!");
         return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_PROVINCE_SUCCESS.getMessage(), pageable.getPageSize());
     }
 
     @GetMapping("/provinces-level")
     public OctResponse<Page<LogisticResponse>> findLogisticByProvince(
-            @RequestParam(name = "levelMapping", defaultValue = "1") int levelMapping,
-            @RequestParam(name = "provinceId", required = false) Integer provinceId,
+            @RequestParam(name = "provinceId", required = false) Long provinceId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Long provinceIdValue = (provinceId != null) ? provinceId.longValue() : null;
-        Page<LogisticResponse> logisticResponses = logisticService.findLogisticByProvince(levelMapping, provinceIdValue, pageable);
+        Long provinceIdValue = (provinceId != null) ? provinceId : null;
+        Page<LogisticResponse> logisticResponses = logisticService.findLogisticByProvince(provinceIdValue, pageable);
         log.info("Get provinces and logistics successfully!");
         return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_PROVINCE_SUCCESS.getMessage(), pageable.getPageSize());
     }
+
+
 
 
     @GetMapping("/provinces-list")

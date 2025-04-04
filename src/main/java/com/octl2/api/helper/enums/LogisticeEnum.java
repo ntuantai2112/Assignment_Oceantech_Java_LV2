@@ -19,6 +19,7 @@ public enum LogisticeEnum {
     SUB_DISTRICT_NOT_FOUND("No logistic data found for this subdistrict"),
     PROVINCE_NAME_NOT_NULL("Province name is required"),
     LOGISTICS_NOT_FOUND("No logistic data found for this province"),
+    LEVEL_MAPPING_NOT_NULL("No logistic data level mapping not null"),
     LOGISTICS_ID_INVALID("ID cannot be null. Please enter a valid ID."),
     WAREHOUSE_NOT_FOUND("No warehouse data available"),
     FULFILLMENT_NOT_FOUND("No fulfillment center found"),
