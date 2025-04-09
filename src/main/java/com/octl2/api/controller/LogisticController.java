@@ -60,14 +60,6 @@ public class LogisticController {
     }
 
 
-
-
-    @GetMapping("/provinces-list")
-    public OctResponse<List<LogisticResponse>> getLogisticProvinces() {
-        List<LogisticResponse> logisticResponses = logisticService.getLogisticByProvinces();
-        return OctResponse.build(logisticResponses);
-    }
-
     @GetMapping("/districts")
     public OctResponse<Page<LogisticResponse>> getLogisticDistricts(
             @RequestParam(name = "provinceId") Integer provinceId,

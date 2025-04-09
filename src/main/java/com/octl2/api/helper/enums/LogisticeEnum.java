@@ -10,6 +10,7 @@ public enum LogisticeEnum {
     LOGISTIC_PROVINCE_SUCCESS("Get provinces and logistics successfully!"),
     LOGISTIC_DISTRICT_SUCCESS("Get districts and logistics successfully!"),
     LOGISTIC_SUBDISTRICT_SUCCESS("Get subdistricts and logistics successfully!"),
+    LOGISTIC_LEVEL_MAPPING("Level mapping must be between 1 and 3!"),
     PROVINCE_NOT_FOUND("No logistic data found for this province"),
     PROVINCE_ID_INVALID("Invalid Province ID. Please enter a positive number."),
     PROVINCE_ID_NOT_NULL("Province ID cannot be null. Please enter a valid province ID."),

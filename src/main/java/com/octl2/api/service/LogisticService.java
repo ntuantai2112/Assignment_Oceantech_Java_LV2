@@ -17,9 +17,6 @@ public interface LogisticService {
     // Lọc theo Id Province lấy ra Province là Logistic
     Page<LogisticResponse> findLogisticByProvince(Long provinceId,Pageable pageable);
 
-
-    List<LogisticResponse> getLogisticByProvinces();
-
     Page<LogisticResponse> getLogisticByDistricts(Integer provinceId, Pageable pageable);
 
     Page<LogisticResponse> getLogisticBySubDistricts(Integer districtId, Pageable pageable);

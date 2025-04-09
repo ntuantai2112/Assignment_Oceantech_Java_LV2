@@ -6,6 +6,7 @@ import lombok.experimental.SuperBuilder;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @SuperBuilder
@@ -14,5 +15,8 @@ public class LogisticData implements Serializable {
     private List<PartnerResponse> fulfilments;
     private List<PartnerResponse> lastmiles;
     private List<WarehouseResponse> warehouses;
+    private Set<PartnerResponse> fulfilmentsSet;
+    private Set<PartnerResponse> lastmilesSet;
+    private Set<WarehouseResponse> warehousesSet;
 
 }

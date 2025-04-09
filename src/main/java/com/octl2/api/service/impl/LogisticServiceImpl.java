@@ -9,6 +9,7 @@ import com.octl2.api.dto.LogisticDTO;
 import com.octl2.api.dto.ProvinceDTO;
 import com.octl2.api.dto.response.*;
 import com.octl2.api.entity.*;
+import com.octl2.api.helper.enums.LevelMapping;
 import com.octl2.api.helper.enums.LogisticeEnum;
 import com.octl2.api.helper.enums.PartnerType;
 import com.octl2.api.repository.*;
@@ -46,54 +47,32 @@ public class LogisticServiceImpl implements LogisticService {
     MappingLevel mappingLevel;
 
 
-    // Chức năn lấy thông tin Province và Logistice
-    @Override
-    public List<LogisticResponse> getLogisticByProvinces() {
-        List<LogisticDTO> results = defaultDeliveryRepo.findLogisticsByProvinces();
-        if (results.isEmpty()) {
-            throw new OctEntityNotFoundException(
-                    ErrorMessages.NOT_FOUND,
-                    new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
-            );
-        }
-        return getLogisticResponsesWithProvince(results);
-    }
-
-
     // Hàm lấy ra danh sách các Province và Logistic có phân trang
     @Override
     public Page<LogisticResponse> findLogisticByProvinces(Pageable pageable) {
+        try {
+            int levelMapping = getLevelMapping();
 
-        int levelMapping = mappingLevel.getLevelMapping();
-        if (Integer.valueOf(levelMapping) == null) {
-            throw new OctEntityNotFoundException(
-                    ErrorMessages.NOT_FOUND,
-                    new ApiMessageError(LogisticeEnum.LEVEL_MAPPING_NOT_NULL.getMessage())
-            );
+            Page<LogisticDTO> results = defaultDeliveryRepo.findLogisticsByProvinces(levelMapping, pageable);
+            if (results.isEmpty()) {
+                throw new OctEntityNotFoundException(
+                        ErrorMessages.NOT_FOUND,
+                        new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
+                );
+            }
+            return results.map(this::convertToProvinceResponse);
+        } catch (Exception e) {
+            log.error("OctEntityNotFoundException {}", e.getMessage(), e.getCause());
+            return null;
         }
-        Page<LogisticDTO> results = defaultDeliveryRepo.findLogisticsByProvinces(levelMapping, pageable);
-        if (results.isEmpty()) {
-            throw new OctEntityNotFoundException(
-                    ErrorMessages.NOT_FOUND,
-                    new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
-            );
-        }
-        return results.map(this::convertToProvinceResponse);
     }
 
 
     // Hàm lấy danh sách các Province và Logistic theo level Mapping có ID Province Lọc theo ID
     @Override
     public Page<LogisticResponse> findLogisticByProvince(Long provinceId, Pageable pageable) {
-        int levelMapping = mappingLevel.getLevelMapping();
-//        if (Integer.valueOf(levelMapping) == null) {
-//            throw new OctEntityNotFoundException(
-//                    ErrorMessages.NOT_FOUND,
-//                    new ApiMessageError(LogisticeEnum.LEVEL_MAPPING_NOT_NULL.getMessage())
-//            );
-//        }
+        int levelMapping = getLevelMapping();
         Page<LogisticDTO> results = defaultDeliveryRepo.findLogisticsByProvince(levelMapping, provinceId, pageable);
-
         if (results.isEmpty()) {
             throw new OctEntityNotFoundException(
                     ErrorMessages.NOT_FOUND,
@@ -109,8 +88,10 @@ public class LogisticServiceImpl implements LogisticService {
     // Lấy ra danh sách Districts và Logistic theo ProvinceId
     @Override
     public Page<LogisticResponse> getLogisticByDistricts(Integer provinceId, Pageable pageable) {
+        int levelMapping = getLevelMapping();
         validateData(provinceId, LogisticeEnum.PROVINCE_ID_NOT_NULL);
-        Page<LogisticDTO> results = defaultDeliveryRepo.getLogisticsByDistricts(provinceId.longValue(), pageable);
+        Page<LogisticDTO> results = defaultDeliveryRepo.findLogisticsByDistricts(levelMapping, provinceId.longValue(), pageable);
+
 
         if (results.isEmpty()) {
             throw new OctEntityNotFoundException(
@@ -119,14 +100,14 @@ public class LogisticServiceImpl implements LogisticService {
             );
         }
         ProvinceResponse provinceResponse = getDataResponseById(provinceId, ProvinceResponse.class);
+
         //Nhóm thông tin
         Map<Long, List<LogisticDTO>> groupedByDistrict = results.stream()
                 .collect(Collectors.groupingBy(LogisticDTO::getDistrictId));
-
         List<DistrictResponse> districtResponses = groupedByDistrict.entrySet().stream()
-                .map(entry -> getLocationResponse(entry.getKey(), entry.getValue(), DistrictResponse.class)
-                )
+                .map(entry -> getLocationResponse(entry.getKey(), entry.getValue(), DistrictResponse.class))
                 .collect(Collectors.toList());
+        getLogisticResponsesWithProvince(results.getContent());
         provinceResponse.setDistricts(districtResponses);
         return results.map(dto -> LogisticResponse.builder()
                 .province(provinceResponse)
@@ -136,9 +117,9 @@ public class LogisticServiceImpl implements LogisticService {
     // Lấy ra danh sách SubDistricts và Logistic theo DistrictId
     @Override
     public Page<LogisticResponse> getLogisticBySubDistricts(Integer districtId, Pageable pageable) {
-
+        int levelMapping = getLevelMapping();
         validateData(districtId, LogisticeEnum.DISTRICT_ID_NOT_NULL);
-        Page<LogisticDTO> results = defaultDeliveryRepo.getLogisticsBySubDistricts(districtId.longValue(), pageable);
+        Page<LogisticDTO> results = defaultDeliveryRepo.getLogisticsBySubDistricts(levelMapping, districtId.longValue(), pageable);
         if (results.isEmpty()) {
             throw new OctEntityNotFoundException(
                     ErrorMessages.NOT_FOUND,
@@ -185,9 +166,10 @@ public class LogisticServiceImpl implements LogisticService {
         return response;
     }
 
+
     // Hàm trả về danh sách LogisticResponse - với Province
     private List<LogisticResponse> getLogisticResponsesWithProvince(List<LogisticDTO> results) {
-        ProvinceResponse provinceResponse = getProvinceResponse(results);
+        ProvinceResponse provinceResponse = getLocationResponse(results, ProvinceResponse.class);
         List<PartnerResponse> ffmList = extractPartners(results, PartnerType.FFM);
         List<PartnerResponse> lmList = extractPartners(results, PartnerType.LM);
         List<WarehouseResponse> warehouses = extractWarehouses(results);
@@ -198,6 +180,7 @@ public class LogisticServiceImpl implements LogisticService {
                 .build());
     }
 
+    // Chức năng lấy giá trị LogisticData
     private LogisticData getLogisticData(List<PartnerResponse> ffmList, List<PartnerResponse> lmList,
                                          List<WarehouseResponse> warehouses) {
         return LogisticData.builder()
@@ -208,20 +191,53 @@ public class LogisticServiceImpl implements LogisticService {
     }
 
     // Hàm Lấy ra giá trị ProvinceResponse từ danh sách LogisticDTO
-    private ProvinceResponse getProvinceResponse(List<LogisticDTO> results) {
-        ProvinceResponse provinceResponse;
-        provinceResponse = provinceRepo.findById(results.get(0).getProvinceId())
-                .map(province -> ProvinceResponse.builder()
-                        .id(province.getId())
-                        .name(province.getName())
-                        .code(province.getCode())
-                        .build()
-                ).orElseThrow(() -> new OctEntityNotFoundException(
-                        ErrorMessages.NOT_FOUND,
-                        new ApiMessageError(LogisticeEnum.PROVINCE_NOT_FOUND.getMessage())
-                ));
-        return provinceResponse;
+    private <T> T getLocationResponse(List<LogisticDTO> results, Class<T> responseType) {
+
+        if (responseType == ProvinceResponse.class) {
+            ProvinceResponse provinceResponse;
+            provinceResponse = provinceRepo.findById(results.get(0).getProvinceId())
+                    .map(province -> ProvinceResponse.builder()
+                            .id(province.getId())
+                            .name(province.getName())
+                            .code(province.getCode())
+                            .build()
+                    ).orElseThrow(() -> new OctEntityNotFoundException(
+                            ErrorMessages.NOT_FOUND,
+                            new ApiMessageError(LogisticeEnum.PROVINCE_NOT_FOUND.getMessage())
+                    ));
+            return responseType.cast(provinceResponse);
+        } else if (responseType == DistrictResponse.class) {
+            District district = districtRepo.findById(results.get(0).getDistrictId().longValue())
+                    .orElseThrow(() -> new OctEntityNotFoundException(
+                            ErrorMessages.NOT_FOUND,
+                            new ApiMessageError(LogisticeEnum.DISTRICT_NOT_FOUND.getMessage())
+                    ));
+
+            return responseType.cast(DistrictResponse.builder()
+                    .id(district.getId())
+                    .name(district.getName())
+                    .code(district.getCode())
+                    .build());
+
+        } else if (responseType == SubDistrictResponse.class) {
+            SubDistrict subDistrict = subDistrictRepo.findById((results.get(0).getSubDistrictId().longValue()))
+                    .orElseThrow(() -> new OctEntityNotFoundException(
+                            ErrorMessages.NOT_FOUND,
+                            new ApiMessageError(LogisticeEnum.SUB_DISTRICT_NOT_FOUND.getMessage())
+                    ));
+
+            return responseType.cast(SubDistrictResponse.builder()
+                    .id(subDistrict.getId())
+                    .name(subDistrict.getName())
+                    .code(subDistrict.getCode())
+                    .build());
+
+        }
+        log.error("Unsupported type: {}" + responseType.getSimpleName());
+        throw new OctException(ErrorMessages.UNSUPPORTED_TYPE);
+
     }
+
 
     // Chức năng Convert giá trị ProvinceDTO sang ProvinceResponse
     private ProvinceResponse convertProvinceDTO(Integer districtId) {
@@ -325,11 +341,13 @@ public class LogisticServiceImpl implements LogisticService {
                             ErrorMessages.NOT_FOUND,
                             new ApiMessageError(LogisticeEnum.DISTRICT_NOT_FOUND.getMessage())
                     ));
+
+
             return responseType.cast(DistrictResponse.builder()
                     .district(convertLocationResponse(district, DistrictResponse.class))
-                    .fulfilments(extractPartners(results, PartnerType.FFM))
-                    .lastmiles(extractPartners(results, PartnerType.LM))
-                    .warehouses(extractWarehouses(results))
+                    .fulfilments(removeDuplicatePartners(extractPartners(results, PartnerType.FFM)))
+                    .lastmiles(removeDuplicatePartners(extractPartners(results, PartnerType.LM)))
+                    .warehouses(removeDuplicateWarehouses(extractWarehouses(results)))
                     .build());
 
         } else if (responseType == SubDistrictResponse.class) {
@@ -341,9 +359,9 @@ public class LogisticServiceImpl implements LogisticService {
 
             return responseType.cast(SubDistrictResponse.builder()
                     .subDistrict(convertLocationResponse(subDistrict, SubDistrictResponse.class))
-                    .fulfilments(extractPartners(results, PartnerType.FFM))
-                    .lastmiles(extractPartners(results, PartnerType.LM))
-                    .warehouses(extractWarehouses(results))
+                    .fulfilments(removeDuplicatePartners(extractPartners(results, PartnerType.FFM)))
+                    .lastmiles(removeDuplicatePartners(extractPartners(results, PartnerType.LM)))
+                    .warehouses(removeDuplicateWarehouses(extractWarehouses(results)))
                     .build());
         }
         throw new OctException(ErrorMessages.UNSUPPORTED_TYPE);
@@ -384,6 +402,7 @@ public class LogisticServiceImpl implements LogisticService {
                 .collect(Collectors.toList());
     }
 
+
     // Chức năng lấy giá trị Warehouse từ List LogisticDTO
     private WarehouseResponse buildWarehouseResponse(LogisticDTO row) {
 
@@ -394,6 +413,7 @@ public class LogisticServiceImpl implements LogisticService {
         return warehouseRepo.findById(row.getWarehouseId())
                 .map(warehouse -> WarehouseResponse.builder()
                         .id(warehouse.getId().intValue())
+                        .name(warehouse.getWarehouseName())
                         .sortName(warehouse.getWarehouseShortname())
                         .contact(warehouse.getContactName())
                         .phone(warehouse.getContactPhone())
@@ -670,6 +690,39 @@ public class LogisticServiceImpl implements LogisticService {
 
         }).collect(Collectors.toList());
 
+    }
+
+    private int getLevelMapping() {
+        int levelMapping = mappingLevel.getLevelMapping();
+        if (Integer.valueOf(levelMapping) == null) {
+            throw new OctEntityNotFoundException(
+                    ErrorMessages.NOT_FOUND,
+                    new ApiMessageError(LogisticeEnum.LEVEL_MAPPING_NOT_NULL.getMessage())
+            );
+        } else if (levelMapping <= 0 || levelMapping > 3) {
+            throw new OctEntityNotFoundException(
+                    ErrorMessages.INVALID_VALUE,
+                    new ApiMessageError(LogisticeEnum.LOGISTIC_LEVEL_MAPPING.getMessage())
+            );
+        }
+        return levelMapping;
+    }
+
+    private List<PartnerResponse> removeDuplicatePartners(List<PartnerResponse> partners) {
+        // Dùng Map để giữ lại duy nhất mỗi Partner theo ID
+        Map<Long, PartnerResponse> partnerMap = new LinkedHashMap<>();
+        for (PartnerResponse partner : partners) {
+            partnerMap.putIfAbsent(partner.getId().longValue(), partner); // Nếu ID chưa có thì mới thêm
+        }
+        return new ArrayList<>(partnerMap.values());
+    }
+
+    private List<WarehouseResponse> removeDuplicateWarehouses(List<WarehouseResponse> warehouses) {
+        Map<Long, WarehouseResponse> warehouseMap = new LinkedHashMap<>();
+        for (WarehouseResponse wh : warehouses) {
+            warehouseMap.putIfAbsent(wh.getId().longValue(), wh); // Giữ bản ghi đầu tiên theo ID
+        }
+        return new ArrayList<>(warehouseMap.values());
     }
 
 
