@@ -39,24 +39,16 @@ public class LogisticController {
 
     @GetMapping("/provinces")
     public OctResponse<Page<LogisticResponse>> getLogisticProvincesPaged(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Max(30) int size) {
+
+
         Pageable pageable = PageRequest.of(page, size);
         Page<LogisticResponse> logisticResponses = logisticService.findLogisticByProvinces(pageable);
+        Long totalElement = logisticResponses.getTotalElements();
         log.info("Get provinces and logistics successfully!");
-        return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_PROVINCE_SUCCESS.getMessage(), pageable.getPageSize());
-    }
+        return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_PROVINCE_SUCCESS.getMessage(), totalElement.intValue());
 
-    @GetMapping("/provinces-level")
-    public OctResponse<Page<LogisticResponse>> findLogisticByProvince(
-            @RequestParam(name = "provinceId", required = false) Long provinceId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Long provinceIdValue = (provinceId != null) ? provinceId : null;
-        Page<LogisticResponse> logisticResponses = logisticService.findLogisticByProvince(provinceIdValue, pageable);
-        log.info("Get provinces and logistics successfully!");
-        return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_PROVINCE_SUCCESS.getMessage(), pageable.getPageSize());
     }
 
 
@@ -68,8 +60,9 @@ public class LogisticController {
 
         Pageable pageable = PageRequest.of(page, size);
         Page<LogisticResponse> logisticResponses = logisticService.getLogisticByDistricts(provinceId, pageable);
+        Long totalElement = logisticResponses.getTotalElements();
         log.info("Get district and logistics successfully!");
-        return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_DISTRICT_SUCCESS.getMessage(), pageable.getPageSize());
+        return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_DISTRICT_SUCCESS.getMessage(), totalElement.intValue());
     }
 
     @GetMapping("/communes")
@@ -80,8 +73,9 @@ public class LogisticController {
 
         Pageable pageable = PageRequest.of(page, size);
         Page<LogisticResponse> logisticResponses = logisticService.getLogisticBySubDistricts(districtId, pageable);
+        Long totalElement = logisticResponses.getTotalElements();
         log.info("Get Sub District and logistics successfully!");
-        return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_SUBDISTRICT_SUCCESS.getMessage(), pageable.getPageSize());
+        return OctResponse.build(logisticResponses, LogisticeEnum.LOGISTIC_SUBDISTRICT_SUCCESS.getMessage(), totalElement.intValue());
     }
 
     @GetMapping("/export")

@@ -15,7 +15,7 @@ public enum ErrorMessages implements ErrorMessage {
     SAVE_DATABASE_ERROR(400_002, "Save database error"),
     MISSING_REQUIRED_FIELD(400_003, "Missing required field"),
     NOT_FOUND(404, "Resource not found"),
-    ;
+    INVALID_PAGE_NUMBER(406, "Page number exceeds the available pages");
 
     private final int code;
     private final String message;
