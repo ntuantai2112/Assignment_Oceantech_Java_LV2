@@ -8,25 +8,25 @@ import com.octl2.api.config.MappingLevel;
 import com.octl2.api.dto.LogisticDTO;
 import com.octl2.api.dto.ProvinceDTO;
 import com.octl2.api.dto.response.*;
-import com.octl2.api.entity.*;
-import com.octl2.api.helper.enums.LevelMapping;
+import com.octl2.api.entity.District;
+import com.octl2.api.entity.Partner;
+import com.octl2.api.entity.Province;
+import com.octl2.api.entity.SubDistrict;
 import com.octl2.api.helper.enums.LogisticeEnum;
 import com.octl2.api.helper.enums.PartnerType;
 import com.octl2.api.repository.*;
 import com.octl2.api.service.LogisticService;
+import com.octl2.api.util.excel.BaseExport;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.ByteArrayOutputStream;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -45,8 +45,6 @@ public class LogisticServiceImpl implements LogisticService {
     WarehouseRepository warehouseRepo;
     PartnerRepository partnerRepo;
     MappingLevel mappingLevel;
-
-    private static final int MAX_PAGE_SIZE = 100;
 
 
     // Hàm lấy ra danh sách các Province và Logistic có phân trang
@@ -408,150 +406,30 @@ public class LogisticServiceImpl implements LogisticService {
 
     // Chức năng Export Excel
     @Override
-    public ByteArrayResource exportLogisticToExcel(int levelMapping) {
+    public void exportLogisticToExcel(HttpServletResponse response) {
         try {
+            int levelMapping = getLevelMapping();
             List<LogisticDTO> logisticData = getLogisticsByLevel(levelMapping);
-            byte[] bytes = exportToExcel(logisticData, levelMapping);
-            return new ByteArrayResource(bytes);
+            List<LogisticResponse> logisticsResponse = logisticData.stream()
+                    .map(dto -> mapToLogisticResponse(dto, levelMapping))
+                    .collect(Collectors.toList());
+
+            BaseExport<LogisticResponse> baseExport = new BaseExport<>(logisticsResponse);
+            baseExport.writeHeaderLine(levelMapping);
+
+            String[] fields = baseExport.buildExportFields(levelMapping);
+            baseExport.writeDataLines(fields, LogisticResponse.class);
+            response.setContentType("application/octet-stream");
+            response.setHeader("Content-Disposition", "attachment; filename=logistics.xlsx");
+            baseExport.export(response);
 
         } catch (IOException e) {
-            log.error(e.getMessage());
+            log.error("Error Export Excel:{} {}", e.getMessage(), e.getCause());
+            throw new OctException(ErrorMessages.BAD_REQUEST);
         }
-        throw new OctException(ErrorMessages.BAD_REQUEST);
     }
 
-    private byte[] exportToExcel(List<LogisticDTO> logisticsData, int levelMapping) throws IOException {
-        Workbook workbook = new XSSFWorkbook();
-        Sheet sheet = workbook.createSheet("Logistics");
-
-        // Định dạng tiêu đề
-        CellStyle headerStyle = workbook.createCellStyle();
-        Font font = workbook.createFont();
-        font.setBold(true);
-        headerStyle.setFont(font);
-
-        // Tạo tiêu đề
-        Row headerRow = sheet.createRow(0);
-        List<String> header = getHeadersByLevel(levelMapping);
-        for (int i = 0; i < header.size(); i++) {
-            Cell cell = headerRow.createCell(i);
-            cell.setCellValue(header.get(i));
-            cell.setCellStyle(headerStyle);
-        }
-
-
-        // Ghi dữ liệu
-        List<LogisticResponse> logisticResponses = convertValue(logisticsData, levelMapping);
-        int rowIndex = 1;
-        for (LogisticResponse data : logisticResponses) {
-            Row row = sheet.createRow(rowIndex++);
-            int colIdx = 0;
-
-//            Province province = provinceRepo.findById(data.getProvince().getId())
-//                    .orElseThrow(() -> new OctEntityNotFoundException(
-//                            ErrorMessages.NOT_FOUND,
-//                            new ApiMessageError(LogisticeEnum.PROVINCE_NOT_FOUND.getMessage())
-//                    ));
-
-            row.createCell(colIdx++).setCellValue(data.getProvince().getId());
-            row.createCell(colIdx++).setCellValue(data.getProvince().getName());
-            row.createCell(colIdx++).setCellValue(data.getProvince().getCode());
-            if (levelMapping > 1) {
-//                District district = districtRepo.findById(data.getDistrict().getId())
-//                        .orElseThrow(() -> new OctEntityNotFoundException(
-//                                ErrorMessages.NOT_FOUND,
-//                                new ApiMessageError(LogisticeEnum.DISTRICT_NOT_FOUND.getMessage())
-//                        ));
-                row.createCell(colIdx++).setCellValue(data.getDistrict().getId());
-                row.createCell(colIdx++).setCellValue(data.getDistrict().getId());
-                row.createCell(colIdx++).setCellValue(data.getDistrict().getId());
-            }
-//            if (levelMapping == 3){
-//                SubDistrict subDistrict = subDistrictRepo.findById(data.getDistrict().get)
-//                        .orElseThrow(() -> new OctEntityNotFoundException(
-//                                ErrorMessages.NOT_FOUND,
-//                                new ApiMessageError(LogisticeEnum.DISTRICT_NOT_FOUND.getMessage())
-//                        ));
-//                row.createCell(colIdx++).setCellValue(district.getId());
-//                row.createCell(colIdx++).setCellValue(district.getName());
-//                row.createCell(colIdx++).setCellValue(district.getCode());
-//                row.createCell(colIdx++).setCellValue(data.getSubdistrictName());
-//            }
-//
-//            PartnerResponse ffm = buildPartnerResponse(data,PartnerType.FFM);
-            row.createCell(colIdx++).setCellValue(data.getFulfilment().getName());
-            row.createCell(colIdx++).setCellValue(data.getLastmile().getName());
-            row.createCell(colIdx++).setCellValue(data.getWarehouse().getName());
-        }
-
-        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            workbook.write(outputStream);
-            workbook.close();
-            return outputStream.toByteArray();
-        }
-
-    }
-
-
-    private List<String> getHeadersByLevel(Integer levelMapping) {
-        List<String> headers = new ArrayList<>();
-        headers.add("Province Id");
-        headers.add("Province Name");
-        headers.add("Province Code");
-
-        if (levelMapping > 1) {
-            headers.add("District Id");
-            headers.add("District Name");
-            headers.add("District Code");
-        }
-
-        if (levelMapping == 3) {
-            headers.add("SubDistrict Id");
-            headers.add("SubDistrict Name");
-            headers.add("SubDistrict Code");
-        }
-
-        headers.add("Fulfilment Name");
-        headers.add("Lastmile  Name");
-        headers.add("Warehouse  Name");
-
-        return headers;
-    }
-
-
-    private LogisticResponse convertLogisticResponse(LogisticDTO logisticDTO, int levelMapping) {
-
-
-        // Province
-        List<ProvinceResponse> provinceResponses = getDataResponseByIds(
-                Collections.singletonList(logisticDTO.getProvinceId().intValue()), ProvinceResponse.class);
-
-        ProvinceResponse provinceResponse = provinceResponses.isEmpty() ? null : provinceResponses.get(0);
-
-
-        DistrictResponse districtResponse = null;
-        SubDistrictResponse subDistrictResponse = null;
-        if (levelMapping == 2) {
-            districtResponse = getDataResponseById(logisticDTO.getDistrictId().intValue(), DistrictResponse.class);
-        }
-        if (levelMapping == 3) {
-            subDistrictResponse = getDataResponseById(logisticDTO.getSubDistrictId().intValue(), SubDistrictResponse.class);
-        }
-//        PartnerResponse ffm = buildPartnerResponse(logisticDTO, PartnerType.FFM);
-//        PartnerResponse lm = buildPartnerResponse(logisticDTO, PartnerType.LM);
-//        WarehouseResponse warehouseResponse = buildWarehouseResponse(logisticDTO);
-        return
-                LogisticResponse.builder()
-                        .province(provinceResponse)
-//                .district(districtResponse)
-//                .subDistrict(subDistrictResponse)
-//                .fulfilment(ffm)
-//                .lastmile(lm)
-//                .warehouse(warehouseResponse)
-                        .build();
-
-    }
-
+    // Lấy ra danh sách LogisticDTO theo level Mapping
     public List<LogisticDTO> getLogisticsByLevel(int levelMapping) {
         switch (levelMapping) {
             case 1:
@@ -566,7 +444,7 @@ public class LogisticServiceImpl implements LogisticService {
         }
     }
 
-
+    // Hàm lấy giá trị Response theo Id
     private <T> List<T> getDataResponseByIds(List<Integer> locationIds, Class<T> responseType) {
         List<T> responseList = new ArrayList<>();
 
@@ -616,8 +494,6 @@ public class LogisticServiceImpl implements LogisticService {
 
     // hàm Convert giá trị từ ListDTO sang Level Response
     private List<LogisticResponse> convertValue(List<LogisticDTO> dtoList, int levelMapping) {
-//        List<LogisticDTO> dtoList = defaultDeliveryRepo.findLogisticsByLevel(1) ;
-
         return dtoList.stream().map(dto ->
         {
             Province province = provinceRepo.findById(dto.getProvinceId()).get();
@@ -657,6 +533,36 @@ public class LogisticServiceImpl implements LogisticService {
                     .build();
 
         }).collect(Collectors.toList());
+
+    }
+
+    // hàm Convert giá trị  từ đối tượng ListDTO sang đối tượng Logistic Response theo level Mapping
+    private LogisticResponse mapToLogisticResponse(LogisticDTO dto, int levelMapping) {
+
+        LogisticResponse logisticResponse = LogisticResponse.builder().build();
+        ProvinceResponse province = getDataResponseById(dto.getProvinceId().intValue(), ProvinceResponse.class);
+        logisticResponse.setProvince(province);
+
+        if (levelMapping == 2 && dto.getDistrictId() != null) {
+            DistrictResponse district = getDataResponseById(dto.getDistrictId().intValue(), DistrictResponse.class);
+            logisticResponse.setDistrict(district);
+        }
+
+        if (levelMapping == 3 && dto.getSubDistrictId() != null) {
+            SubDistrictResponse subDistrict = getDataResponseById(dto.getSubDistrictId().intValue(), SubDistrictResponse.class);
+            logisticResponse.setSubDistrict(subDistrict);
+        }
+
+        PartnerResponse ffm = buildPartnerResponse(dto, PartnerType.FFM);
+        PartnerResponse lm = buildPartnerResponse(dto, PartnerType.LM);
+        WarehouseResponse wh = buildWarehouseResponse(dto);
+
+        logisticResponse.setFulfilment(ffm);
+        logisticResponse.setLastmile(lm);
+        logisticResponse.setWarehouse(wh);
+
+        return logisticResponse;
+
 
     }
 

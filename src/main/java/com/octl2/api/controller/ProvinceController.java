@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.constraints.Min;
 
 @RestController
@@ -26,5 +27,10 @@ public class ProvinceController {
     public OctResponse<ProvinceDTO> getById(@PathVariable @Min(1) long id) {
         ProvinceDTO result = provinceService.getBybId(id);
         return OctResponse.build(result);
+    }
+
+    @GetMapping("/exportExcel")
+    public void exportProvinceExcel(HttpServletResponse response) {
+        provinceService.ExportExcel(response);
     }
 }

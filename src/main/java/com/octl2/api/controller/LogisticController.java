@@ -1,8 +1,6 @@
 package com.octl2.api.controller;
 
 import com.octl2.api.commons.OctResponse;
-import com.octl2.api.commons.exception.ErrorMessage;
-import com.octl2.api.commons.exception.ErrorMessages;
 import com.octl2.api.dto.response.LogisticResponse;
 import com.octl2.api.helper.enums.LogisticeEnum;
 import com.octl2.api.service.LogisticService;
@@ -10,22 +8,18 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.logging.log4j.message.Message;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
-import java.io.IOException;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/logistics")
@@ -79,14 +73,8 @@ public class LogisticController {
     }
 
     @GetMapping("/export")
-    public ResponseEntity<ByteArrayResource> exportLogistic(@RequestParam(value = "levelMapping", defaultValue = "1") @Min(1) @Max(3) int LevelMapping) throws IOException {
-        ByteArrayResource file = logisticService.exportLogisticToExcel(LevelMapping);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=logistics.xlsx")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(file);
-
-
+    public void exportLogistic(HttpServletResponse response) {
+        logisticService.exportLogisticToExcel(response);
     }
 
 }
