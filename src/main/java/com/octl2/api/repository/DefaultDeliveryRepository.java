@@ -96,7 +96,7 @@ public interface DefaultDeliveryRepository extends JpaRepository<DefaultDelivery
                                                  Pageable pageable);
 
     // Lấy ra danh sách LogisticDTO để thực hiện chức năng Export Excel theo Level 1(Province)
-    @Query(value = "SELECT " +
+    @Query(value = "SELECT DISTINCT " +
                    "p.province_id AS provinceId, " +
                    "ffm.partner_id AS ffmId, " +
                    "lm.partner_id AS lmId, " +
@@ -110,25 +110,23 @@ public interface DefaultDeliveryRepository extends JpaRepository<DefaultDelivery
             nativeQuery = true)
     List<LogisticDTO> findLogisticsByProvince();
 
-    @Query(value = "SELECT " +
+    @Query(value = "SELECT DISTINCT " +
                    "p.province_id AS provinceId, " +
                    "d.district_id AS districtId, " +
-                   "s.subdistrict_id AS subdistrictId, " +
                    "ffm.partner_id AS ffmId, " +
                    "lm.partner_id AS lmId, " +
                    "wh.warehouse_id AS warehouseId " +
                    "FROM lc_province p " +
                    "JOIN lc_district d ON p.province_id = d.province_id " +
-                   "JOIN lc_subdistrict s ON d.district_id = s.district_id " +
                    "JOIN cf_default_delivery cfd ON cfd.location_id = d.district_id " +
                    "JOIN bp_partner ffm ON cfd.ffm_id = ffm.partner_id AND ffm.partner_type = 122 " +
                    "JOIN bp_partner lm ON cfd.lastmile_id = lm.partner_id AND lm.partner_type = 121 " +
                    "JOIN bp_warehouse wh ON cfd.warehouse_id = wh.warehouse_id " +
-                   "ORDER BY p.province_id ",
+                   "ORDER BY d.district_id ",
             nativeQuery = true)
     List<LogisticDTO> findLogisticsByDistrict();
 
-    @Query(value = "SELECT " +
+    @Query(value = "SELECT DISTINCT " +
                    "p.province_id AS provinceId, " +
                    "d.district_id AS districtId, " +
                    "s.subdistrict_id AS subdistrictId, " +
@@ -142,7 +140,7 @@ public interface DefaultDeliveryRepository extends JpaRepository<DefaultDelivery
                    "JOIN bp_partner ffm ON cfd.ffm_id = ffm.partner_id AND ffm.partner_type = 122 " +
                    "JOIN bp_partner lm ON cfd.lastmile_id = lm.partner_id AND lm.partner_type = 121 " +
                    "JOIN bp_warehouse wh ON cfd.warehouse_id = wh.warehouse_id " +
-                   "ORDER BY p.province_id ",
+                   "ORDER BY s.subdistrict_id ",
             nativeQuery = true)
     List<LogisticDTO> findLogisticsBySubDistrict();
 

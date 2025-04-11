@@ -8,10 +8,7 @@ import com.octl2.api.config.MappingLevel;
 import com.octl2.api.dto.LogisticDTO;
 import com.octl2.api.dto.ProvinceDTO;
 import com.octl2.api.dto.response.*;
-import com.octl2.api.entity.District;
-import com.octl2.api.entity.Partner;
-import com.octl2.api.entity.Province;
-import com.octl2.api.entity.SubDistrict;
+import com.octl2.api.entity.*;
 import com.octl2.api.helper.enums.LogisticeEnum;
 import com.octl2.api.helper.enums.PartnerType;
 import com.octl2.api.repository.*;
@@ -22,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -59,7 +58,12 @@ public class LogisticServiceImpl implements LogisticService {
                     new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
             );
         }
-        return results.map(this::convertToProvinceResponse);
+
+        LogisticPreloadData preloadData = preloadData(results.getContent(), levelMapping);
+        List<LogisticResponse> logisticResponses = results.getContent()
+                .stream().map(dto -> mapToLogisticResponse(dto, levelMapping, preloadData))
+                .collect(Collectors.toList());
+        return new PageImpl<>(logisticResponses, pageable, results.getTotalElements());
     }
 
 
@@ -76,13 +80,12 @@ public class LogisticServiceImpl implements LogisticService {
                     new ApiMessageError(LogisticeEnum.LOGISTICS_NOT_FOUND.getMessage())
             );
         }
-        //Nhóm thông tin
+
         Map<Long, List<LogisticDTO>> groupedByDistrict = results.stream()
                 .collect(Collectors.groupingBy(LogisticDTO::getDistrictId));
         List<DistrictResponse> districtResponses = groupedByDistrict.entrySet().stream()
                 .map(entry -> getLocationResponse(entry.getKey(), entry.getValue(), DistrictResponse.class))
                 .collect(Collectors.toList());
-        getLogisticResponsesWithProvince(results.getContent());
         provinceResponse.setDistricts(districtResponses);
         return results.map(dto -> LogisticResponse.builder()
                 .province(provinceResponse)
@@ -128,12 +131,6 @@ public class LogisticServiceImpl implements LogisticService {
             );
         }
         return levelMapping;
-    }
-
-    // Hàm Convert giá trị từ ProvinceDTO -> Response
-    private LogisticResponse convertToProvinceResponse(LogisticDTO dto) {
-        LogisticResponse response = getLogisticResponsesWithProvince(Collections.singletonList(dto)).get(0);
-        return response;
     }
 
 
@@ -410,8 +407,9 @@ public class LogisticServiceImpl implements LogisticService {
         try {
             int levelMapping = getLevelMapping();
             List<LogisticDTO> logisticData = getLogisticsByLevel(levelMapping);
+            LogisticPreloadData preloadData = preloadData(logisticData, levelMapping);
             List<LogisticResponse> logisticsResponse = logisticData.stream()
-                    .map(dto -> mapToLogisticResponse(dto, levelMapping))
+                    .map(dto -> mapToLogisticResponse(dto, levelMapping, preloadData))
                     .collect(Collectors.toList());
 
             BaseExport<LogisticResponse> baseExport = new BaseExport<>(logisticsResponse);
@@ -419,6 +417,7 @@ public class LogisticServiceImpl implements LogisticService {
 
             String[] fields = baseExport.buildExportFields(levelMapping);
             baseExport.writeDataLines(fields, LogisticResponse.class);
+            baseExport.autoSizeAllColumns();
             response.setContentType("application/octet-stream");
             response.setHeader("Content-Disposition", "attachment; filename=logistics.xlsx");
             baseExport.export(response);
@@ -444,128 +443,82 @@ public class LogisticServiceImpl implements LogisticService {
         }
     }
 
-    // Hàm lấy giá trị Response theo Id
-    private <T> List<T> getDataResponseByIds(List<Integer> locationIds, Class<T> responseType) {
-        List<T> responseList = new ArrayList<>();
-
-        if (responseType == ProvinceResponse.class) {
-            List<Province> provinces = provinceRepo.findAllById(locationIds.stream()
-                    .map(Integer::longValue)  // Chuyển đổi Integer thành Long
-                    .collect(Collectors.toList()));
-
-            provinces.forEach(province -> responseList.add(responseType.cast(ProvinceResponse.builder()
-                    .id(province.getId())
-                    .name(province.getName())
-                    .code(province.getCode())
-                    .build())));
-
-        } else if (responseType == DistrictResponse.class) {
-            List<District> districts = districtRepo.findAllById(locationIds.stream()
-                    .map(Integer::longValue)
-                    .collect(Collectors.toList()));
-
-            districts.forEach(district -> {
-                responseList.add(responseType.cast(DistrictResponse.builder()
-                        .id(district.getId())
-                        .name(district.getName())
-                        .code(district.getCode())
-                        .build()));
-            });
-
-        } else if (responseType == SubDistrictResponse.class) {
-            List<SubDistrict> subDistricts = subDistrictRepo.findAllById(locationIds.stream()
-                    .map(Integer::longValue)
-                    .collect(Collectors.toList()));
-
-            subDistricts.forEach(subDistrict -> {
-                responseList.add(responseType.cast(SubDistrictResponse.builder()
-                        .id(subDistrict.getId())
-                        .name(subDistrict.getName())
-                        .code(subDistrict.getCode())
-                        .build()));
-            });
-        } else {
-            log.error("Unsupported type: {}", responseType.getSimpleName());
-            throw new OctException(ErrorMessages.UNSUPPORTED_TYPE);
-        }
-
-        return responseList;
-    }
-
-    // hàm Convert giá trị từ ListDTO sang Level Response
-    private List<LogisticResponse> convertValue(List<LogisticDTO> dtoList, int levelMapping) {
-        return dtoList.stream().map(dto ->
-        {
-            Province province = provinceRepo.findById(dto.getProvinceId()).get();
-            ProvinceResponse provinceResponse = ProvinceResponse.builder()
-                    .id(province.getId())
-                    .name(province.getName())
-                    .build();
-            DistrictResponse districtResponse = null;
-            SubDistrictResponse subDistrictResponse = null;
-
-            if (levelMapping > 1) {
-                District district = districtRepo.findById(dto.getDistrictId()).get();
-                districtResponse = DistrictResponse.builder()
-                        .id(district.getId())
-                        .name(district.getName())
-                        .build();
-
-
-            } else if (levelMapping == 3) {
-                SubDistrict subDistrict = subDistrictRepo.findById(dto.getSubDistrictId()).get();
-                subDistrictResponse = SubDistrictResponse.builder()
-                        .id(subDistrict.getId())
-                        .name(subDistrict.getName())
-                        .build();
-            }
-            PartnerResponse ffm = buildPartnerResponse(dto, PartnerType.FFM);
-            PartnerResponse lm = buildPartnerResponse(dto, PartnerType.LM);
-            WarehouseResponse wh = buildWarehouseResponse(dto);
-
-            return LogisticResponse.builder()
-                    .province(provinceResponse)
-                    .district(districtResponse)
-                    .subDistrict(subDistrictResponse)
-                    .fulfilment(ffm)
-                    .lastmile(lm)
-                    .warehouse(wh)
-                    .build();
-
-        }).collect(Collectors.toList());
-
-    }
-
     // hàm Convert giá trị  từ đối tượng ListDTO sang đối tượng Logistic Response theo level Mapping
-    private LogisticResponse mapToLogisticResponse(LogisticDTO dto, int levelMapping) {
-
+    private LogisticResponse mapToLogisticResponse(LogisticDTO dto, int levelMapping, LogisticPreloadData preloadData) {
         LogisticResponse logisticResponse = LogisticResponse.builder().build();
-        ProvinceResponse province = getDataResponseById(dto.getProvinceId().intValue(), ProvinceResponse.class);
-        logisticResponse.setProvince(province);
+        Province province = preloadData.getProvinceMap().get(dto.getProvinceId());
+        if (province == null) {
+            throw new OctEntityNotFoundException(
+                    ErrorMessages.NOT_FOUND,
+                    new ApiMessageError(LogisticeEnum.PROVINCE_NOT_FOUND.getMessage()));
+        }
+        logisticResponse.setProvince(ProvinceResponse.builder()
+                .id(province.getId())
+                .name(province.getName())
+                .code(province.getCode())
+                .build()
+        );
 
-        if (levelMapping == 2 && dto.getDistrictId() != null) {
-            DistrictResponse district = getDataResponseById(dto.getDistrictId().intValue(), DistrictResponse.class);
-            logisticResponse.setDistrict(district);
+        if (levelMapping >= 2 && dto.getDistrictId() != null) {
+
+            District district = preloadData.getDistrictMap().get(dto.getDistrictId());
+            if (district == null) {
+                throw new OctEntityNotFoundException(
+                        ErrorMessages.NOT_FOUND,
+                        new ApiMessageError(LogisticeEnum.DISTRICT_NOT_FOUND.getMessage()));
+            }
+            logisticResponse.setDistrict(DistrictResponse.builder()
+                    .id(district.getId())
+                    .name(district.getName())
+                    .code(district.getCode())
+                    .build());
         }
 
         if (levelMapping == 3 && dto.getSubDistrictId() != null) {
-            SubDistrictResponse subDistrict = getDataResponseById(dto.getSubDistrictId().intValue(), SubDistrictResponse.class);
-            logisticResponse.setSubDistrict(subDistrict);
+            SubDistrict subDistrict = preloadData.getSubDistrictMap().get(dto.getSubDistrictId());
+            if (subDistrict == null) {
+                throw new OctEntityNotFoundException(
+                        ErrorMessages.NOT_FOUND,
+                        new ApiMessageError(LogisticeEnum.SUB_DISTRICT_NOT_FOUND.getMessage()));
+            }
+            logisticResponse.setSubDistrict(SubDistrictResponse.builder()
+                    .id(subDistrict.getId())
+                    .name(subDistrict.getName())
+                    .code(subDistrict.getCode())
+                    .build());
         }
 
-        PartnerResponse ffm = buildPartnerResponse(dto, PartnerType.FFM);
-        PartnerResponse lm = buildPartnerResponse(dto, PartnerType.LM);
-        WarehouseResponse wh = buildWarehouseResponse(dto);
+        Partner ffm = preloadData.getPartnerMap().get(dto.getFfmId());
+        Partner lm = preloadData.getPartnerMap().get(dto.getLmId());
+        if (ffm != null) {
+            logisticResponse.setFulfilment(PartnerResponse.builder()
+                    .id(ffm.getId().intValue())
+                    .name(ffm.getName())
+                    .sortName(ffm.getShortname())
+                    .build());
+        }
 
-        logisticResponse.setFulfilment(ffm);
-        logisticResponse.setLastmile(lm);
-        logisticResponse.setWarehouse(wh);
-
+        if (lm != null) {
+            logisticResponse.setLastmile(PartnerResponse.builder()
+                    .id(lm.getId().intValue())
+                    .name(lm.getName())
+                    .sortName(lm.getShortname())
+                    .build());
+        }
+        Warehouse wh = preloadData.getWarehouseMap().get(dto.getWarehouseId());
+        preloadData.getWarehouseMap();
+        if (wh != null) {
+            logisticResponse.setWarehouse(WarehouseResponse.builder()
+                    .id(wh.getId().intValue())
+                    .name(wh.getWarehouseName())
+                    .sortName(wh.getWarehouseShortname())
+                    .contact(wh.getContactName())
+                    .phone(wh.getContactPhone())
+                    .address(wh.getFullAddress())
+                    .build());
+        }
         return logisticResponse;
-
-
     }
-
 
     // Hàm trả về danh sách PartnerResponse loại bỏ các phần tử trùng lặp
     private List<PartnerResponse> removeDuplicatePartners(List<PartnerResponse> partners) {
@@ -595,5 +548,77 @@ public class LogisticServiceImpl implements LogisticService {
         }
     }
 
+    // Tạo hàm duyệt qua danh sách DTO theo level Mapping trả về LogisticPreloadData
+    private LogisticPreloadData preloadData(List<LogisticDTO> dtoList, int levelMapping) {
+        Set<Long> provinceIds = dtoList.stream()
+                .map(LogisticDTO::getProvinceId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<Long> districtIds = new HashSet<>();
+        Set<Long> subDistrictIds = new HashSet<>();
+        if (levelMapping >= 2) {
+            districtIds = dtoList.stream()
+                    .map(LogisticDTO::getDistrictId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+        }
+        if (levelMapping == 3) {
+            subDistrictIds = dtoList.stream()
+                    .map(LogisticDTO::getSubDistrictId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+        }
+
+        Set<Long> fulfilmentIds = dtoList.stream()
+                .map(LogisticDTO::getFfmId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<Long> lastmileIds = dtoList.stream()
+                .map(LogisticDTO::getLmId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<Long> wareHouseIds = dtoList.stream()
+                .map(LogisticDTO::getWarehouseId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+
+        Map<Long, Province> provinceMap = provinceRepo.findAllById(provinceIds)
+                .stream()
+                .collect(Collectors.toMap(Province::getId, Function.identity()));
+
+        Map<Long, District> districtMap = districtRepo.findAllById(districtIds)
+                .stream()
+                .collect(Collectors.toMap(District::getId, Function.identity()));
+
+        Map<Long, SubDistrict> subDistrictMap = subDistrictRepo.findAllById(subDistrictIds)
+                .stream()
+                .collect(Collectors.toMap(SubDistrict::getId, Function.identity()));
+
+
+        Set<Long> allPartner = new HashSet<>(fulfilmentIds);
+        allPartner.addAll(lastmileIds);
+
+        Map<Long, Partner> partnerMap = partnerRepo.findAllById(allPartner)
+                .stream()
+                .collect(Collectors.toMap(Partner::getId, Function.identity()));
+
+        Map<Long, Warehouse> warehouseMap = warehouseRepo.findAllById(wareHouseIds)
+                .stream()
+                .collect(Collectors.toMap(Warehouse::getId, Function.identity()));
+
+
+        return LogisticPreloadData.builder()
+                .provinceMap(provinceMap)
+                .districtMap(districtMap)
+                .subDistrictMap(subDistrictMap)
+                .partnerMap(partnerMap)
+                .warehouseMap(warehouseMap)
+                .build();
+    }
 
 }

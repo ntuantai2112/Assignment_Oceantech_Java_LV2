@@ -32,6 +32,9 @@ public class BaseExport<T> {
     public BaseExport(List<T> listData) {
         this.listData = listData;
         workbook = new XSSFWorkbook();
+        workbook.getProperties().getCoreProperties().setCreator("OCTL2 System");
+        workbook.getProperties().getCoreProperties().setTitle("Logistics Export");
+
     }
 
 
@@ -55,45 +58,8 @@ public class BaseExport<T> {
 
     }
 
-//    public void writeHeaderLine(int levelMapping) {
-//        sheet = workbook.createSheet("Logistic");
-//        Row row = sheet.createRow(0);
-//        int colIndex = 0;
-//        sheet.autoSizeColumn(colIndex++);
-//
-//        CellStyle style = workbook.createCellStyle();
-//        XSSFFont font = workbook.createFont();
-//        font.setBold(true);
-//        font.setFontHeight(14);
-//        font.setFontName("Times New Roman");
-//        style.setFont(font);
-//
-//
-//        // Province
-//        createCell(row, colIndex, "Province ID", style);
-//        createCell(row, colIndex++, "Province Name", style);
-//        createCell(row, colIndex++, "Province Code", style);
-//
-//        if (levelMapping == 2) {
-//            createCell(row, colIndex++, "District Id", style);
-//            createCell(row, colIndex++, "District Name", style);
-//            createCell(row, colIndex++, "District Code", style);
-//        }
-//
-//        if (levelMapping == 3) {
-//            createCell(row, colIndex++, "SubDistrict Id", style);
-//            createCell(row, colIndex++, "SubDistrict Name", style);
-//            createCell(row, colIndex++, "SubDistrict Code", style);
-//        }
-//        createCell(row, colIndex++, "Fulfilment Name", style);
-//        createCell(row, colIndex++, "Lastmile  Name", style);
-//        createCell(row, colIndex++, "Warehouse  Name", style);
-//
-//
-//    }
 
     private void createCell(Row row, int columnCount, Object value, CellStyle style) {
-        sheet.autoSizeColumn(columnCount);
         Cell cell = row.createCell(columnCount);
         if (value instanceof Integer) {
             cell.setCellValue((Integer) value);
@@ -122,8 +88,6 @@ public class BaseExport<T> {
             int columnCount = 0;
             for (String fieldName : fields) {
                 try {
-//                    Field field = clazz.getDeclaredField(fieldName);
-//                    field.setAccessible(true);
                     Object value = getNestedFieldValue(data, fieldName);
                     createCell(row, columnCount, value, style);
                 } catch (Exception e) {
@@ -132,18 +96,40 @@ public class BaseExport<T> {
                 }
                 columnCount++;
             }
-
-
         }
-
         return this;
     }
 
+    // CHức năng tùy chính kích thước cho từng cột
+    public BaseExport<T> autoSizeAllColumns() {
+        if (sheet.getRow(0) != null) {
+            int columnCount = sheet.getRow(0).getPhysicalNumberOfCells();
+            for (int i = 0; i < columnCount; i++) {
+                sheet.autoSizeColumn(i);
+            }
+        }
+        return this;
+    }
+
+
     public void export(HttpServletResponse response) throws IOException {
-        ServletOutputStream outputStream = response.getOutputStream();
-        workbook.write(outputStream);
-        workbook.close();
-        outputStream.close();
+        try (ServletOutputStream outputStream = response.getOutputStream()) {
+            if (workbook == null) {
+                throw new IllegalStateException("Workbook is null or already closed.");
+            }
+            workbook.write(outputStream);
+            outputStream.flush();
+        } catch (Exception e) {
+            log.error("Export error", e);
+            throw e;
+        } finally {
+            // Close workbook một cách an toàn
+            try {
+                workbook.close();
+            } catch (IOException ex) {
+                log.warn("Failed to close workbook", ex);
+            }
+        }
 
     }
 
@@ -197,13 +183,13 @@ public class BaseExport<T> {
     public String[] buildExportFields(int levelMapping) {
         List<String> fields = new ArrayList<>();
 
-        if (levelMapping == 1) {
-            fields.add("province.id");
-            fields.add("province.name");
-            fields.add("province.code");
-        }
 
-        if (levelMapping == 2) {
+        fields.add("province.id");
+        fields.add("province.name");
+        fields.add("province.code");
+
+
+        if (levelMapping >= 2) {
             fields.add("district.id");
             fields.add("district.name");
             fields.add("district.code");
@@ -238,12 +224,26 @@ public class BaseExport<T> {
         for (String fieldName : fieldNames) {
             if (currentObject == null) return null;
 
-            Field field = currentObject.getClass().getDeclaredField(fieldName);
+            Field field = getFieldRecursive(currentObject.getClass(), fieldName);
             field.setAccessible(true);
             currentObject = field.get(currentObject);
 
         }
         return currentObject;
+    }
+
+    // Chức năng lấy Field của các lớp con kế thừa lớp cha
+    private Field getFieldRecursive(Class<?> clazz, String fieldName) throws NoSuchFieldException {
+        while (clazz != null) {
+            try {
+                return clazz.getDeclaredField(fieldName);
+            } catch (NoSuchFieldException e) {
+                clazz = clazz.getSuperclass();
+            }
+
+        }
+        throw new NoSuchFieldException();
+
     }
 
 
